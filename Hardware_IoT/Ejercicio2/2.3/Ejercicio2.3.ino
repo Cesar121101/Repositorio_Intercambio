@@ -3,10 +3,10 @@
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 
-//const char *ssid  = "MiFibra-C776";
-//const char *password = "auCpN7KN";
-const char *ssid  = "Cesarin";
-const char *password = "cesar121101";
+const char *ssid  = "MiFibra-C776";
+const char *password = "auCpN7KN";
+//const char *ssid  = "Cesarin";
+//  const char *password = "cesar121101";
 int tiempo_actual = 0;
 int tiempo_anterior = 0;
 int rafaga = 0;
@@ -19,17 +19,14 @@ void setup() {
   pinMode(led_r, OUTPUT);
   pinMode(led_g, OUTPUT);
   pinMode(buzzer, OUTPUT);
-  Serial.begin(115200);
+  Serial.begin(9600);
   WiFi.begin(ssid, password);
   Serial.println("Iniciando conexion WiFi");
 
   //Esperar a conectarse a la red
   while(WiFi.status() != WL_CONNECTED){
-    digitalWrite(led_g,1);
-    delay(250);
-    digitalWrite(led_g,0);
-    delay(250);
     Serial.print(".");
+    delay(500);
   }
   encender_buzzer = true;
   Serial.println("");
@@ -40,10 +37,6 @@ void setup() {
 }
 
 void loop() {
-  Serial.print("Tiempo actual: ");
-  Serial.println(tiempo_actual);
-  Serial.print("Tiempo anterior: ");
-  Serial.println(tiempo_anterior);
   tiempo_actual = millis();
   //Encender buzzer
   if(encender_buzzer){
