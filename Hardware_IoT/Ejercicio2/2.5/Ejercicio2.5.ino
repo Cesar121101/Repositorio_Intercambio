@@ -1,14 +1,15 @@
 #include "hardware_D1.h"
+#include "FS.h"
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
-//const char *ssid  = "MiFibra-C776";
-//const char *password = "auCpN7KN";
+const char *ssid  = "MiFibra-C776";
+const char *password = "auCpN7KN";
 //const char *ssid  = "DIGIFIBRA-hSbN";
-//  xconst char *password = "StXtC4k6KPdK";
+//const char *password = "StXtC4k6KPdK";
 //const char *ssid  = "Cesarin";
 //const char *password = "cesar121101";
 
@@ -28,10 +29,12 @@ int contador_mediciones = 0;
 int suma_mediciones = 0;
 int media = 0;
 String numero_cadena;
+bool sobrescribir = true;
+bool alertaUmbral = true;
 
 ESP8266WebServer server(80);
 
-String webPage;
+String webPage = "";
 
 void paginaNoEncontrada(){
   String message = "File not Found \n\n";
@@ -79,20 +82,17 @@ void setup() {
   Serial.println(ssid);
   Serial.print("Direccion IP: ");
   Serial.println(WiFi.localIP());
-
+  
   // Inicializa el cliente NTP
   timeClient.begin();
   timeClient.setTimeOffset(7200);
   timeClient.update();
 
-  webPage = "<h1 style=\"text-align: center;\">&nbsp;<span style=\"color: #ff0000;\"><strong>Bienvenidos al Servidor</strong></span></h1>";
-  webPage += "<h4 style=\"text-align: center;\"><a href=\"On\">Encender alarma</a></h4><p>&nbsp;</p>";
-  webPage += "<h4 style=\"text-align: center;\"><a href=\"Off\">Apagar alarma</a></h4><br>";
-  webPage += "<form action=\"Num\" method=\"post\"><h4 style=\"text-align: center;\"><input id=\"numero\" name=\"numero\" required=\"\" type=\"number\"";
-  webPage += "placeholder=\"Umbral de luminosidad\" /> </h4>";
-  webPage += "<h4 style=\"text-align: center;\"><input type=\"submit\" value=\"Enviar\" /></h4></form>";
-  webPage += "<form action=\"Luz\" method=\"post\"><h4 style=\"text-align: center;\"><input type=\"submit\" value=\"Luz Actual\" /></h4></form>";
-  webPage += "<h3 style=\"text-align: center;\">Luminosida Actual:</h3>";
+  if(!SPIFFS.begin()){
+    Serial.println("Error");
+    return;
+  }
+  cargarWeb();
   
   server.on("/", [](){
     server.send(200,"text/html", webPage); 
@@ -132,6 +132,41 @@ void setup() {
   tiempo_flashA = tiempo_flash;
 }
 
+void cargarWeb(){
+  File file = SPIFFS.open("/paginaWeb.html","r");
+  if(!file){
+    Serial.println("No se puede abrir");
+    return;
+  }
+  while(file.available()){
+    webPage += file.readString();
+  }
+  file.close();
+}
+
+void leerFichero(){
+  File file = SPIFFS.open("/mediciones.txt", "r");
+  while(file.available()){
+    Serial.write(file.read());
+  }
+  file.close();
+}
+
+void escribirFichero(String media, String fecha, String hora, String alertaUmbral){
+  if(sobrescribir){
+    //Abrir archivo para escribir desde 0
+    File file = SPIFFS.open("/mediciones.txt", "w");
+    file.println("M:"+ media + " F:" + fecha + " H:" + hora + " U:" + alertaUmbral);
+    file.close();
+    sobrescribir = false;
+  }else{
+    //Abrir archivo para escribir desde la ultima linea
+    File file = SPIFFS.open("/mediciones.txt", "a");
+    file.println("M:"+ media + " F:" + fecha + " H:" + hora  + " U:" + alertaUmbral);
+    file.close();
+  }
+}
+
 void loop() {
   tiempo_actual = millis();
   tiempo_flash = millis();
@@ -139,21 +174,17 @@ void loop() {
   // Obtiene la hora actual del servidor NTP
   timeClient.update();
 
-  // Obtiene la hora, minutos y segundos
-  int hours = timeClient.getHours();
-  int minutes = timeClient.getMinutes();
-  int seconds = timeClient.getSeconds();
-
-  // Muestra la hora en el puerto serie
-  Serial.print("Hora actual: ");
-  Serial.print(hours);
-  Serial.print(":");
-  Serial.print(minutes);
-  Serial.print(":");
-  Serial.println(seconds);
-
+  // Obtiene fecha y hora
+  String hora = timeClient.getFormattedTime();
+  time_t epochTime = timeClient.getEpochTime();
+  struct tm *ptm = gmtime ((time_t *)&epochTime); 
+  int dia = ptm->tm_mday;
+  int mes = ptm->tm_mon+1;
+  int year = ptm->tm_year+1900;
+  String fecha = (String(dia)+"/"+String(mes)+"/"+String(year));
+     
   // Medicion de luz  
-  if(tiempo_actual - tiempo_anterior >= 5000){
+  if(tiempo_actual - tiempo_anterior >= 1000){
     Serial.println("Medicion sensor");
     medicion_luz = analogRead(sensor_luz);
     suma_mediciones += medicion_luz;
@@ -161,11 +192,20 @@ void loop() {
     tiempo_anterior = tiempo_actual;
   }
 
-  if(tiempo_flash - tiempo_flashA >= 60000){
+  if(tiempo_flash - tiempo_flashA >= 3000){
     Serial.println("Guardar Mediciones");
     media = suma_mediciones/contador_mediciones;
-    //Guardar en flash
+    Serial.print("Media: ");
+    Serial.println(media);
+    if(media > umbral){
+      escribirFichero(String(media), fecha, hora, "arriba");
+    }else{
+      escribirFichero(String(media), fecha, hora, "abajo");
+    }
     tiempo_flashA = tiempo_flash;
+    leerFichero();
+    suma_mediciones = 0;
+    contador_mediciones = 0;
   }
   server.handleClient();
 }
