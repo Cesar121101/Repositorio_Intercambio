@@ -95,43 +95,40 @@ static void Error_Handler(void);
 TIM_HandleTypeDef htim2; //Definimos el TIM2
 TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Estructura del Timer 2
 
+
 static void init_GPIO(void){
 	GPIO_InitTypeDef GPIO_InitStruct; //Definicion los GPIO
 	
-	__HAL_RCC_GPIOA_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO B
-	__HAL_RCC_GPIOC_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO C
+	__HAL_RCC_GPIOA_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO A
+	__HAL_RCC_GPIOB_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO A
+
 	
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //Habilitar el modo funcion alternativa
 	GPIO_InitStruct.Alternate = GPIO_AF1_TIM2; //Definir el modo alternativo del pin
-	GPIO_InitStruct.Pin = GPIO_PIN_5; //Definir al pin 5
+	GPIO_InitStruct.Pin = GPIO_PIN_11; //Definir al pin 5
 	
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct); //Inicializar el pin 5
-	
-	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; //Habilitar el modo input
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN; //Habilitar resitencias pulldown del pin
-	GPIO_InitStruct.Pin = GPIO_PIN_13; //Definir al pin 13
-	
-	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); //Inicializar el pin 13
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct); //Inicializar el pin 11
 }
 
-static void init_Timer2(){
-	
+static void init_Timer2(void){
 	htim2.Instance = TIM2; 
-	htim2.Init.Prescaler = 0; //Prescaler a 8400, El reloj de APB1 es de 84 MHz / Prescaler (8400) = 10KHz
-	//Para obtener el tiempo dividimos periodo/frecuencia de conteo (en este caso 10KHz)
-	htim2.Init.Period = 65535; //Frecuencia de conteo = 10KHz/Period = Frecuencia de interrupcion
+	htim2.Init.Prescaler = 839; //Prescaler a 1, El reloj de APB1 es de 84 MHz / Prescaler (8400) = 10 kHz
+	htim2.Init.Period = 99; //Frecuencia de conteo = 100 kHz/1 kHz = Frecuencia de interrupcion = ARR = 100
 	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-	HAL_TIM_Base_Init(&htim2);
+	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	HAL_TIM_PWM_Init(&htim2);
 	
 	TIM_Channel_InitStruct.OCMode = TIM_OCMODE_PWM1; //Definimos el modo PWM1
-	TIM_Channel_InitStruct.Pulse = 4000; //Ciclo de trabajo
+	//TIM_Channel_InitStruct.Pulse = 100; //100% duty cycle
+	//TIM_Channel_InitStruct.Pulse = 75; //75% duty cycle
+	TIM_Channel_InitStruct.Pulse = 50; //50% duty cycle
+	//TIM_Channel_InitStruct.Pulse = 25; //25% duty cycle
 	TIM_Channel_InitStruct.OCPolarity = TIM_OCPOLARITY_HIGH;
 	TIM_Channel_InitStruct.OCFastMode = TIM_OCFAST_DISABLE;
 	
-	HAL_TIM_PWM_ConfigChannel(&htim2, &TIM_Channel_InitStruct, TIM_CHANNEL_1); //Configurar el canal
-
+	HAL_TIM_PWM_ConfigChannel(&htim2, &TIM_Channel_InitStruct, TIM_CHANNEL_4); //Configurar el canal
+	
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4); //Iniciar el timer
 }
 	
 int main(void)
@@ -154,10 +151,14 @@ int main(void)
 
   /* Add your application code here
      */
+	
 	init_GPIO(); //Llamada de la funcion de iniciar los GPIO
+	
+	__HAL_RCC_TIM2_CLK_ENABLE(); //Habilitar reloj del timer 2
+	
 	init_Timer2(); //LLamar a la funcion de iniciar el Timer 2
 	
-	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); //Iniciar el timer
+	
 	
 	
 #ifdef RTE_CMSIS_RTOS2
@@ -174,7 +175,7 @@ int main(void)
   /* Infinite loop */
   while (1)
   {
-  }
+	}
 }
 
 /**
@@ -187,8 +188,8 @@ int main(void)
   *            APB1 Prescaler                 = 4
   *            APB2 Prescaler                 = 2
   *            HSE Frequency(Hz)              = 8000000
-  *            PLL_M                          = 25
-  *            PLL_N                          = 336
+  *            PLL_M                          = 4
+  *            PLL_N                          = 168
   *            PLL_P                          = 2
   *            PLL_Q                          = 7
   *            VDD(V)                         = 3.3
