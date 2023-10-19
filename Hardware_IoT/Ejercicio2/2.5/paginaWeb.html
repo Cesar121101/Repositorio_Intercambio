@@ -25,12 +25,23 @@
         <p><i class="fas light" style="color:#059e8a;"></i>Luz</p><p><span class="reading"><span id="luz">%Luz%</span> </span></p>
       </div>
 
-      <div class="card">
+      <div class="card2">
         <p><i class="fas light" style="color:#059e8a;"></i>Alarma</p><p><span class="reading"><span id="alarma">%Alarma%</span> </span></p>
-        <form action="Alarma\" method="post">
-        <h4 style="text-align: center;"><input type="submit" value="Encender Alarma" /></h4>
-        <h4 style="text-align: center;"><input type="submit" value="Enviar" /></h4>
-        </form>
+        <script>
+          function actualizarColorTarjeta() {
+            var alarma = document.getElementById("alarma").textContent;
+            var card2 = document.querySelector(".card2");
+            if (alarma === "ON") {
+              card2.style.backgroundColor = "red";
+              card2.style.boxShadow = "2px 2px 12px 1px rgba(140,140,140,.5)";
+            } else {
+              card2.style.backgroundColor = "lightgreen";
+              card2.style.boxShadow = "2px 2px 12px 1px rgba(140,140,140,.5)";
+            }
+          } 
+          setInterval(actualizarColorTarjeta, 500)
+          actualizarColorTarjeta();
+        </script>
       </div>
 
      <div class="card">

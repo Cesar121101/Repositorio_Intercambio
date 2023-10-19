@@ -39,15 +39,14 @@ void actualizarMedicionLuz() {
   delay(500);
   suma_mediciones += medicion_luz;
   contador_mediciones ++;
-  if (medicion_luz > medicion_umbral) {
-    digitalWrite(led_r, HIGH);  // Encender el LED
-    estado_alarma = "ON";
-    
-} else {
+  if (medicion_luz < medicion_umbral) {
     digitalWrite(led_r, LOW);   // Apagar el LED
     estado_alarma = "OFF";
-}
-    Serial.println(medicion_luz);
+  }else { 
+    digitalWrite(led_r, HIGH);   // Apagar el LED
+    estado_alarma = "ON";
+  }
+  Serial.println(medicion_luz);
 }
 
 // Create AsyncWebServer object on port 80
@@ -170,19 +169,9 @@ void setup() {
       medicion_umbral = numero_cadena.toInt();
       Serial.println(medicion_umbral);
     }
+    request->redirect("/");
     request->send_P(200, "text/html", index_html, processor);
   });
-
-  server.on("/Alarma", HTTP_POST, [](AsyncWebServerRequest *request){
-    String string_cadena;
-    if(request->hasParam("alarm", true)){
-      string_cadena = request->getParam("alarm", true)->value();
-      encender_alarma = string_cadena;
-      Serial.print(encender_alarma);
-    }
-    request->send_P(200, "text/html", index_html, processor);
-  });
-
   // Handle Web Server Events
   events.onConnect([](AsyncEventSourceClient *client){
     if(client->lastId()){
@@ -199,7 +188,6 @@ void loop() {
     tiempo_flash = millis();
     events.send("ping",NULL,millis());
     events.send(String(medicion_luz).c_str(),"luz_actual",millis()); //valores del sensor de luz
-    //events.send(String(medicion_umbral).c_str(),"umbral_actual",millis()); //umbral de input en la pagina
     events.send(String(estado_alarma).c_str(),"estado_alarma",millis()); // ON o OFF
     
     timeClient.update();
