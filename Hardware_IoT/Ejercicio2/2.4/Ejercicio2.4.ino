@@ -1,114 +1,109 @@
-#include "hardware_D1.h"
-#include "FS.h"
 #include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 #include <WiFiClient.h>
-#include <ESP8266WebServer.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include "hardware_D1.h"
 
-const char *ssid  = "MiFibra-C776";
-const char *password = "auCpN7KN";
+// Replace with your network credentials
 //const char *ssid  = "DIGIFIBRA-hSbN";
 //const char *password = "StXtC4k6KPdK";
-//const char *ssid  = "Cesarin";
-//const char *password = "cesar121101";
+const char *ssid  = "Cesarin";
+const char *password = "cesar121101";
+
+const char *ntpServerName = "pool.ntp.org";
+
+WiFiUDP ntpUDP;
+
+NTPClient timeClient(ntpUDP, ntpServerName, 1);
+
 int medicion_luz = 0;
 int tiempo_actual = 0;
 int tiempo_anterior = 0;
-int umbral;
-bool primer_buzzer = true;
-bool enviarLuminosidad = false;
+int tiempo_flash = 0;
+int tiempo_flashA = 0;
+int medicion_umbral = 0; 
+int contador_mediciones = 0;
+int suma_mediciones = 0;
+int media = 0;
 String numero_cadena;
+bool sobrescribir = true;
+bool alertaUmbral = true;
+String estado_alarma = "OFF";
+String encender_alarma = "No";
+char index_html[5000];
 
-ESP8266WebServer server(80);
-
-String webPage = "";
-
-void paginaNoEncontrada(){
-  String message = "File not Found \n\n";
-  message += "URI";
-  message += server.uri();
-  message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server.args();
-  message += "\n";
-
-  for(uint8_t i = 0; i < server.args(); i++){
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+void actualizarMedicionLuz() {
+  medicion_luz = analogRead(sensor_luz);
+  delay(500);
+  suma_mediciones += medicion_luz;
+  contador_mediciones ++;
+  if (medicion_luz < medicion_umbral) {
+    digitalWrite(led_r, LOW);   // Apagar el LED
+    estado_alarma = "OFF";
   }
-
-  server.send (404, "text/plain", message);
+  Serial.println(medicion_luz);
 }
 
-void setup() {
-  pinMode(led_r, OUTPUT);
-  pinMode(led_g, OUTPUT);
-  pinMode(buzzer, OUTPUT);
-  pinMode(sensor_luz, INPUT);
-  Serial.begin(9600);
-  WiFi.begin(ssid, password);
-  Serial.println("Iniciando conexion WiFi");
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
 
-  //Esperar a conectarse a la red
-  while(WiFi.status() != WL_CONNECTED){
-    digitalWrite(led_g,1);
-    delay(250);
-    digitalWrite(led_g,0);
-    delay(250);
-    Serial.print(".");
-  }
-  //Si estamos conectados a la red encendemos el led verde
-  if(WiFi.status() == WL_CONNECTED){
-    digitalWrite(led_g,1);
-  }else{
-    primer_buzzer = false;
-    digitalWrite(led_g,0);
-  }
-  
-  Serial.println("");
-  Serial.print("Conectado a: ");
-  Serial.println(ssid);
-  Serial.print("Direccion IP: ");
-  Serial.println(WiFi.localIP());
+// Create an Event Source on /events
+AsyncEventSource events("/events");
 
-  if(!SPIFFS.begin()){
-    Serial.println("Error");
-    return;
-  }
-  cargarWeb();
-  
-  server.on("/", [](){
-    server.send(200,"text/html", webPage); 
-  });
-  server.on("/On", [](){
-    Serial.println("Encender alarma");
-    medicion_luz = analogRead(sensor_luz);
-    if(medicion_luz > umbral){
-      digitalWrite(led_r, 1);
+// Timer variables
+unsigned long lastTime = 0;  
+unsigned long timerDelay = 1000;
+
+// Initialize WiFi
+void initWiFi() {
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    Serial.print("Connecting to WiFi ..");
+    while (WiFi.status() != WL_CONNECTED) {
+        Serial.print('.');
+        digitalWrite(led_g,1);
+        delay(250);
+        digitalWrite(led_g,0);
+        delay(250);
     }
-    server.send(200,"text/html", webPage); 
-  });
-  server.on("/Off", [](){
-    Serial.println("Apagar led");
-    digitalWrite(led_r, 0);
-    server.send(200,"text/html", webPage); 
-  });
-  server.on("/Num", [](){
-    numero_cadena = server.arg("numero"); // Obtener el dato enviado desde la página web
-    Serial.println("Dato recibido desde la página web: " + numero_cadena);
-    umbral = numero_cadena.toInt();
-    //Convertir el dato que recibimos a entero numero.toInt()
-    server.send(200,"text/html", webPage); 
-  });
-  server.on("/Luz",[](){
-    Serial.println("Enviar luminosidad");
-    medicion_luz = analogRead(sensor_luz);
-    server.send(200,"text/html", webPage + "<h3 style=\"text-align: center;\">" + String(medicion_luz) + "</h3>"); 
-  }); 
-  server.onNotFound(paginaNoEncontrada);
-  server.begin();
-  Serial.println("HTPP server started"); 
+    
+    Serial.println("Wifi connected!");
+    delay(1000);
+    Serial.println(WiFi.localIP());
+    if (WiFi.status() == WL_CONNECTED){
+      digitalWrite(led_g,1);
+       // Inicializa el cliente NTP
+      timeClient.begin();
+      timeClient.setTimeOffset(7200);
+      timeClient.update();
+    
+      if(!SPIFFS.begin()){
+        Serial.println("Error");
+        return;
+      }
+      tiempo_actual = millis();
+      tiempo_flash = millis();
+      tiempo_anterior = tiempo_actual;
+      tiempo_flashA = tiempo_flash;
+    }
+    else{
+      digitalWrite(led_g,0);
+    }
+}
+
+String processor(const String& var){
+  if(var == "Luz"){
+    return String(medicion_luz);
+  }
+  else if (var == "Alarma"){
+    return String(estado_alarma);
+  }
+  else if(var == "Umbral"){
+    return String(medicion_umbral);
+  }
+  return String();
 }
 
 void cargarWeb(){
@@ -118,11 +113,68 @@ void cargarWeb(){
     return;
   }
   while(file.available()){
-    webPage += file.readString();
+    String contenidoArchivo = file.readString(); // Lee el contenido del archivo en un objeto String
+    char contenidoChar[contenidoArchivo.length() + 1]; // Crea un buffer para almacenar el contenido como un array de caracteres
+    contenidoArchivo.toCharArray(contenidoChar, contenidoArchivo.length() + 1); // Convierte el String a un array de caracteres
+    strcat(index_html, contenidoChar);
+    //index_html += file.readString();
   }
   file.close();
 }
 
+void setup() {
+  pinMode(led_r, OUTPUT);
+  pinMode(led_g, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+  pinMode(sensor_luz, INPUT);
+  Serial.begin(9600);
+  initWiFi();
+  cargarWeb();
+
+  // Handle Web Server
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  server.on("/Num", HTTP_POST, [](AsyncWebServerRequest *request){
+    String numero_cadena;
+    if(request->hasParam("numero", true)){
+      numero_cadena = request->getParam("numero", true)->value();
+      medicion_umbral = numero_cadena.toInt();
+      Serial.println(medicion_umbral);
+    }
+    request->redirect("/");
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  server.on("/Alarma", HTTP_POST, [](AsyncWebServerRequest *request){
+    Serial.print(encender_alarma);
+    if(medicion_luz > medicion_umbral){
+      estado_alarma = "ON";
+      digitalWrite(led_r, 1);
+    }
+    request->redirect("/");
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  // Handle Web Server Events
+  events.onConnect([](AsyncEventSourceClient *client){
+    if(client->lastId()){
+      Serial.printf("Client reconnected!");
+    }
+    client->send("hello!", NULL, millis(), 1);
+  });
+  server.addHandler(&events);
+  server.begin();
+}
+
 void loop() {
-  server.handleClient();
+  if ((millis() - lastTime) > timerDelay) {
+    tiempo_flash = millis();
+    events.send("ping",NULL,millis());
+    events.send(String(medicion_luz).c_str(),"luz_actual",millis()); //valores del sensor de luz
+    events.send(String(estado_alarma).c_str(),"estado_alarma",millis()); // ON o OFF
+    actualizarMedicionLuz();
+    lastTime = millis();
+  }
 }
