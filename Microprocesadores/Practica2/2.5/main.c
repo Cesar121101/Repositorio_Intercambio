@@ -92,8 +92,8 @@ static void Error_Handler(void);
   * @param  None
   * @retval None
   */
-TIM_HandleTypeDef htim2; //Definimos el TIM2
-TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Estructura del Timer 2
+TIM_HandleTypeDef htim2; //Manejador del TIM2
+TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Estructura de timer en modo Output Compare
 
 static void init_GPIO(void){
 	GPIO_InitTypeDef GPIO_InitStruct; //Definicion los GPIO
@@ -101,12 +101,14 @@ static void init_GPIO(void){
 	__HAL_RCC_GPIOB_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO B
 	__HAL_RCC_GPIOC_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO C
 	
+	//PB11 en modo funcion alternativa del timer 2
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //Habilitar el modo funcion alternativa
 	GPIO_InitStruct.Alternate = GPIO_AF1_TIM2; //Definir el modo alternativo del pin
 	GPIO_InitStruct.Pin = GPIO_PIN_11; //Definir al pin 11
 	
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct); //Inicializar el pin 11
 	
+	//PC13 en modo interrupcion
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; //Habilitar el modo input
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN; //Habilitar resitencias pulldown del pin
 	GPIO_InitStruct.Pin = GPIO_PIN_13; //Definir al pin 13
@@ -118,18 +120,20 @@ static void init_Timer2(){
 	
 	htim2.Instance = TIM2; 
 	htim2.Init.Prescaler = 8400; //Prescaler a 8400, El reloj de APB1 es de 84 MHz / Prescaler (8400) = 10KHz
-	//Para obtener el tiempo dividimos periodo/frecuencia de conteo (en este caso 10KHz)
-	htim2.Init.Period = 9; //Frecuencia de conteo = 10KHz/Period = Frecuencia de interrupcion
+	//Periodo del timer es el 100% del ciclo de trabajo
+	htim2.Init.Period = 9; //Frecuencia de la salida = APB1/ Periodo*PSC
 	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
 	HAL_TIM_PWM_Init(&htim2);
 	
+	//Configuracion del PWM
 	TIM_Channel_InitStruct.OCMode = TIM_OCMODE_PWM1; //Definimos el modo PWM1
-	TIM_Channel_InitStruct.Pulse = 7; //Ciclo de trabajo
+	TIM_Channel_InitStruct.Pulse = 7; //Ciclo de trabajo, debe ser menor al periodo, aqui es 70% duty cycle
 	TIM_Channel_InitStruct.OCPolarity = TIM_OCPOLARITY_HIGH;
 	TIM_Channel_InitStruct.OCFastMode = TIM_OCFAST_DISABLE;
 	
+	//Habilitar configuraciones previas
 	HAL_TIM_PWM_ConfigChannel(&htim2, &TIM_Channel_InitStruct, TIM_CHANNEL_4); //Configurar el canal
-	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4); //Iniciar el timer
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4); //Iniciar la señal PWM
 }
 	
 int main(void)
@@ -153,7 +157,7 @@ int main(void)
   /* Add your application code here
      */
 	init_GPIO(); //Llamada de la funcion de iniciar los GPIO
-	__HAL_RCC_TIM2_CLK_ENABLE();
+	__HAL_RCC_TIM2_CLK_ENABLE(); //Habilitar reloj del Timer 2
 	init_Timer2(); //LLamar a la funcion de iniciar el Timer 2
 	
 #ifdef RTE_CMSIS_RTOS2
