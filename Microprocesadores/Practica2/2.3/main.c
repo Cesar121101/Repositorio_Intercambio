@@ -92,22 +92,25 @@ static void Error_Handler(void);
   * @param  None
   * @retval None
   */
-TIM_HandleTypeDef htim2; //Definimos el TIM2
-TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Estructura del Timer 2
+TIM_HandleTypeDef htim2; //Manejador del TIM2
+TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Manejador de timer en modo Output compare
 uint32_t periodo = 4;
 
+//Funcion de inicio de GPIO
 static void init_GPIO(void){
 	GPIO_InitTypeDef GPIO_InitStruct; //Definicion los GPIO
 	
 	__HAL_RCC_GPIOB_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO B
 	__HAL_RCC_GPIOC_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO C
 	
+	//Modo interrupcion en flanco positivo
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; //Habilitar el modo input
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN; //Habilitar resitencias pulldown del pin
+	GPIO_InitStruct.Pull = GPIO_NOPULL; //Sin resistencias para el boton de usuario
 	GPIO_InitStruct.Pin = GPIO_PIN_13; //Definir al pin 13
 	
 	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); //Inicializar el pin 13
 	
+	//PB11 para el timer 2, canal 4
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //Habilitar el modo funcion alternativa
 	GPIO_InitStruct.Alternate = GPIO_AF1_TIM2; //Definir el modo alternativo del pin
 	GPIO_InitStruct.Pin = GPIO_PIN_11; //Definir al pin 11
@@ -115,26 +118,34 @@ static void init_GPIO(void){
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct); //Inicializar el pin 11
 }
 
+//Funcion de TIM 2
 static void init_Timer(uint32_t periodo){
 	
-	htim2.Instance = TIM2; 
-	htim2.Init.Prescaler = 8399; //Prescaler a 8400, El reloj de APB1 es de 84 MHz / Prescaler (8400) = 10KHz
-	//Para obtener el tiempo dividimos periodo/frecuencia de conteo (en este caso 10KHz)
-	htim2.Init.Period = periodo; //Frecuencia de conteo = 10KHz/Period = Frecuencia de interrupcion
-	HAL_TIM_OC_Init(&htim2);
+	htim2.Instance = TIM2; //Elegir timer
+	htim2.Init.Prescaler = 8399; //Prescaler a 8400, El reloj de APB1 es de 84 MHz / Prescaler = Frecuencia de conteo de timer
+	//Para obtener el tiempo dividimos periodo/frecuencia de conteo
+	//Si queremos frecuencia dividimos el APB1 / Periodo * PSC = Frecuencia de la señal de salida 
+	//Dividir el periodo entre 2 para considerar flanco de subida y bajada
+	htim2.Init.Period = periodo; //Registro de autorecarga
+	HAL_TIM_OC_Init(&htim2); //Iniciar el timer en modo Output Compare
 	
-	TIM_Channel_InitStruct.OCMode = TIM_OCMODE_TOGGLE;
+	//Configuraciones del modo Output
+	TIM_Channel_InitStruct.OCMode = TIM_OCMODE_TOGGLE; 
 	TIM_Channel_InitStruct.OCPolarity = TIM_OCPOLARITY_HIGH;
 	TIM_Channel_InitStruct.OCFastMode = TIM_OCFAST_DISABLE;
 	
+	//Establecer configuraciones previas
 	HAL_TIM_OC_ConfigChannel(&htim2, &TIM_Channel_InitStruct, TIM_CHANNEL_4); //Configurar el canal
-	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_4); //Iniciar el timer
+	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_4); //Iniciar el Output del timer con el canal deseado
 }
 
+//Atencion a las interrupciones de los pines 10-15
 void EXTI15_10_IRQHandler(void){
+		//Manejador de interrupciones de GPIO por el HAL
 		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
 }
 	
+//Callback de las interrupciones del HAL
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN){
 		if(periodo == 4){
 			periodo = 1;
