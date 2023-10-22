@@ -85,16 +85,19 @@ uint32_t HAL_GetTick (void) {
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 static void Error_Handler(void);
-static GPIO_InitTypeDef GPIO_InitStruct; //Definicion los GPIO
+static GPIO_InitTypeDef GPIO_InitStruct; //Manejador de GPIOS
 
 //Variables globales 
 static uint32_t frecuencia = 125;
 int contador = 0;
 
+//Manejador de interrupciones de los pines 10-15 startup_stm32
 void EXTI15_10_IRQHandler(void){
+		//Manejador de interrupciones de GPIO
 		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
 }
 	
+//Callback de las interrupciones GPIO
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN){
 		if(frecuencia == 125){
 			frecuencia = 250;
@@ -143,9 +146,11 @@ int main(void)
 	GPIO_InitStruct.Pull = GPIO_PULLUP; //Habilitar resitencias pull up de los GPIO
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH; //Establecer velocidad de frecuencia en modo alto
 	
-	GPIO_InitStruct.Pin = GPIO_PIN_13 | GPIO_PIN_12 | GPIO_PIN_11; //Definir los pines
+	//Led RGB de la mbed D13,D12,D11
+	GPIO_InitStruct.Pin = GPIO_PIN_13 | GPIO_PIN_12 | GPIO_PIN_11; //Pines
 	HAL_GPIO_Init(GPIOD, &GPIO_InitStruct); //Inicializar los pines
 	
+	//Boton azul PC13, modo interrupcion
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; //Habilitar el modo input
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN; //Deshabilitar resitencias del pin
 	
