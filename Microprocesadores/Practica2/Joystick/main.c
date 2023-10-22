@@ -94,7 +94,7 @@ static void Error_Handler(void);
   */
 TIM_HandleTypeDef htim2; //Manejador del TIM2
 TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Manejador de timer en modo Output compare
-uint32_t periodo = 24; //señal de 2 kHz
+uint32_t periodo = 24; //seÃ±al de 2 kHz
 uint32_t periodonew = 0;
 
 //Funcion de inicio de GPIO
@@ -125,7 +125,7 @@ static void init_Timer(uint32_t periodo){
 	htim2.Instance = TIM2; //Elegir timer
 	htim2.Init.Prescaler = 839; //Prescaler a 840, El reloj de APB1 es de 84 MHz / Prescaler = Frecuencia de conteo de timer
 	//Para obtener el tiempo dividimos periodo/frecuencia de conteo
-	//Si queremos frecuencia dividimos el APB1 / Periodo * PSC = Frecuencia de la señal de salida 
+	//Si queremos frecuencia dividimos el APB1 / Periodo * PSC = Frecuencia de la seÃ±al de salida 
 	//Dividir el periodo entre 2 para considerar flanco de subida y bajada
 	htim2.Init.Period = periodo; //Registro de autorecarga
 	HAL_TIM_OC_Init(&htim2); //Iniciar el timer en modo Output Compare
@@ -143,12 +143,12 @@ static void init_Timer(uint32_t periodo){
 //Atencion a las interrupciones de los pines 10-15
 void EXTI15_10_IRQHandler(void) {
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_11) != RESET) {
-        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_11); // Limpia la bandera de interrupción
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_11); // Limpia la bandera de interrupciÃ³n
         HAL_GPIO_EXTI_Callback(GPIO_PIN_11);    // Llama al callback para el pin 11
     }
     
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_12) != RESET) {
-        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_12); // Limpia la bandera de interrupción
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_12); // Limpia la bandera de interrupciÃ³n
         HAL_GPIO_EXTI_Callback(GPIO_PIN_12);    // Llama al callback para el pin 12
     }
 }
@@ -157,12 +157,12 @@ void EXTI15_10_IRQHandler(void) {
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN){
 	//Duplicar frecuencia
 	if(GPIO_PIN == GPIO_PIN_11){	
-		periodonew = periodo / 2; //señal de 4kHz
+		periodonew = periodo / 2; //seÃ±al de 4kHz
 		init_Timer(periodonew);
 	}
 		//Dividir frecuencia
 	else if(GPIO_PIN == GPIO_PIN_12){
-		periodonew = periodo * 2; //señal de 1 kHz
+		periodonew = periodo * 2; //seÃ±al de 1 kHz
 		init_Timer(periodonew);
 	}
 }
