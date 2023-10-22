@@ -94,13 +94,23 @@ static void Error_Handler(void);
   */
 TIM_HandleTypeDef htim2; //Manejador del TIM2
 TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Manejador de timer en modo Output compare
-uint32_t periodo = 24; //señal de 2 kHz
+TIM_IC_InitTypeDef TIM_Channel_InitStruct2; //Estructura en modo Input Capture
+TIM_HandleTypeDef htim5; //Manejador del TIM5
+uint32_t periodo = 24;
 uint32_t periodonew = 0;
+uint32_t contador = 0;
+uint32_t captura[2];
+uint32_t diffCapture = 0;
+uint32_t TimerClock = 84000000;
+uint32_t prescaler = 84;
+uint32_t seleccion = 0;
+float frecuencia;
 
 //Funcion de inicio de GPIO
 static void init_GPIO(void){
 	GPIO_InitTypeDef GPIO_InitStruct; //Definicion los GPIO
 	
+	__HAL_RCC_GPIOA_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO A
 	__HAL_RCC_GPIOB_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO B
 	__HAL_RCC_GPIOD_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO C
 	
@@ -109,7 +119,7 @@ static void init_GPIO(void){
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; //Habilitar el modo input
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN; //Sin resistencias para el boton de usuario
 	
-	HAL_GPIO_Init(GPIOD, &GPIO_InitStruct); //Inicializar los pines1
+	HAL_GPIO_Init(GPIOD, &GPIO_InitStruct); //Inicializar el pin 13
 	
 	//PB11 para el timer 2, canal 4
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //Habilitar el modo funcion alternativa
@@ -117,15 +127,24 @@ static void init_GPIO(void){
 	GPIO_InitStruct.Pin = GPIO_PIN_11; //Definir al pin 11
 	
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct); //Inicializar el pin 11
+	
+	//Pin A' en modo funcion alternativa del timer 5
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //Habilitar el modo funcion alternativa
+	GPIO_InitStruct.Pull = GPIO_NOPULL; //Habilitar el modo funcion alternativa
+	GPIO_InitStruct.Speed = GPIO_SPEED_LOW; //Habilitar el modo funcion alternativa
+	GPIO_InitStruct.Alternate = GPIO_AF2_TIM5; //Definir el modo alternativo del pin
+	GPIO_InitStruct.Pin = GPIO_PIN_0; //Definir al pin 0
+	
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct); //Inicializar el pin 0
 }
 
 //Funcion de TIM 2
 static void init_Timer(uint32_t periodo){
 	
 	htim2.Instance = TIM2; //Elegir timer
-	htim2.Init.Prescaler = 839; //Prescaler a 840, El reloj de APB1 es de 84 MHz / Prescaler = Frecuencia de conteo de timer
+	htim2.Init.Prescaler = 839; //Prescaler a 8400, El reloj de APB1 es de 84 MHz / Prescaler = Frecuencia de conteo de timer
 	//Para obtener el tiempo dividimos periodo/frecuencia de conteo
-	//Si queremos frecuencia dividimos el APB1 / Periodo * PSC = Frecuencia de la señal de salida 
+	//Si queremos frecuencia dividimos el APB1 / Periodo * PSC = Frecuencia de la se�al de salida 
 	//Dividir el periodo entre 2 para considerar flanco de subida y bajada
 	htim2.Init.Period = periodo; //Registro de autorecarga
 	HAL_TIM_OC_Init(&htim2); //Iniciar el timer en modo Output Compare
@@ -140,15 +159,58 @@ static void init_Timer(uint32_t periodo){
 	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_4); //Iniciar el Output del timer con el canal deseado
 }
 
+//TIM5 en modo Input Capture
+static void init_Timer5(void){
+	htim5.Instance = TIM5; 
+	htim5.Init.Prescaler = 83; //Prescaler a 84, El reloj de APB1 es de 84 MHz / Prescaler (84) = 1MHz
+	htim5.Init.Period = 4294967295; //2^32
+	htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+	HAL_TIM_IC_Init(&htim5); //Iniciar el timer en modo input
+	
+	//Configuracion del input
+	TIM_Channel_InitStruct2.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING; //Detectar flancos de subida
+	TIM_Channel_InitStruct2.ICSelection = TIM_ICSELECTION_DIRECTTI; //Configuraciones directa de canales
+	TIM_Channel_InitStruct2.ICPrescaler = TIM_ICPSC_DIV1; //Sin prescaler
+	TIM_Channel_InitStruct2.ICFilter = 0;
+	
+	HAL_TIM_IC_ConfigChannel(&htim5, &TIM_Channel_InitStruct2, TIM_CHANNEL_1); //Configurar el canal
+	HAL_TIM_IC_Start_IT(&htim5, TIM_CHANNEL_1); //Iniciar las capturas
+}
+
+//Manejador de interrupciones del timer 5
+void TIM5_IRQHandler(void){
+	//Manejador de interrupciones del timer por HAL
+	HAL_TIM_IRQHandler(&htim5);
+}
+
+//Callback de la interrupcion del HAL
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
+	if(contador == 0){ //Primer captura del timer
+		captura[0] = HAL_TIM_ReadCapturedValue(&htim5,TIM_CHANNEL_1); //Leer el valor en el PIN
+		contador = 1;
+	}else if(contador == 1){ //Segunda captura del timer
+		captura[1] = HAL_TIM_ReadCapturedValue(&htim5,TIM_CHANNEL_1);
+		if(captura[1] >= captura[0]){
+				diffCapture = captura[1] - captura[0];
+			}else{ 
+				diffCapture = (0xffffff - captura[0]) + captura[1];
+			}
+			frecuencia = TimerClock/prescaler;
+			frecuencia = frecuencia / diffCapture; //Calculo de Frecuencia
+			__HAL_TIM_SET_COUNTER(&htim5, 0); //Establecemos el contador del timer a 0
+			contador = 0;
+		}
+}
+	
 //Atencion a las interrupciones de los pines 10-15
 void EXTI15_10_IRQHandler(void) {
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_11) != RESET) {
-        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_11); // Limpia la bandera de interrupción
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_11); // Limpia la bandera de interrupci�n
         HAL_GPIO_EXTI_Callback(GPIO_PIN_11);    // Llama al callback para el pin 11
     }
     
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_12) != RESET) {
-        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_12); // Limpia la bandera de interrupción
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_12); // Limpia la bandera de interrupci�n
         HAL_GPIO_EXTI_Callback(GPIO_PIN_12);    // Llama al callback para el pin 12
     }
 }
@@ -157,18 +219,19 @@ void EXTI15_10_IRQHandler(void) {
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN){
 	//Duplicar frecuencia
 	if(GPIO_PIN == GPIO_PIN_11){	
-		periodonew = periodo / 2; //señal de 4kHz
+		periodonew = (periodo + 1) / 2; //se�al de 4.16kHz Si queremos 4000 Hay que cambiar el PSC
+		periodonew -= 1;
 		init_Timer(periodonew);
 	}
 		//Dividir frecuencia
 	else if(GPIO_PIN == GPIO_PIN_12){
-		periodonew = periodo * 2; //señal de 1 kHz
+		periodonew = (periodo + 1) * 2; //se�al de 1 kHz
+		periodonew -= 1;
 		init_Timer(periodonew);
 	}
 }
 
-int main(void)
-{
+int main(void){
 
   /* STM32F4xx HAL library initialization:
        - Configure the Flash prefetch, Flash preread and Buffer caches
@@ -188,9 +251,13 @@ int main(void)
   /* Add your application code here
      */
 	init_GPIO(); //Llamada de la funcion de iniciar los GPIO
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Habilitar la interrupcion del los puertos 10-15
 	__HAL_RCC_TIM2_CLK_ENABLE(); //Habilitar reloj del timer 2
+	__HAL_RCC_TIM5_CLK_ENABLE(); //Habilitar reloj del timer 5
+	HAL_NVIC_EnableIRQ(TIM5_IRQn); //Habilitar las interrupciones del timer 5
 	init_Timer(periodo); //LLamar a la funcion de iniciar el Timer 2
-	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Habilitar las interrupciones del los puertos 10-15
+	init_Timer5(); //Llamar a la funcion de inciar el Timer 5
+
 	
 	
 #ifdef RTE_CMSIS_RTOS2
