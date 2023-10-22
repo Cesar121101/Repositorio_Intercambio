@@ -93,12 +93,15 @@ static GPIO_InitTypeDef GPIO_InitStruct; //Definicion los GPIO
   * @param  None
   * @retval None
   */
-TIM_HandleTypeDef htim7; //Definimos el TIM7
+TIM_HandleTypeDef htim7; //Manejador del TIM 7
 
-void TIM7_IRQHandler(void){ //Funcion de atencion a la interrupcion
+//Funcion de atencion a la interrupcion statup_stm32
+void TIM7_IRQHandler(void){ 
+	//Funcion de atencion a las interrupciones del timer con HAL
 	HAL_TIM_IRQHandler(&htim7);
 }
 
+//Callback de las interrupciones de timer en modo contador Hal_TIM
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim -> Instance == TIM7){
 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
@@ -138,11 +141,11 @@ int main(void)
 	htim7.Init.Prescaler = 8399; //Prescaler a 8400, El reloj de APB1 es de 84 MHz / Prescaler (8400) = 10KHz
 	htim7.Init.Period = 14999; //Para obtener el tiempo dividimos periodo/frecuencia de conteo (en este caso 10KHz)
 	
-	HAL_NVIC_EnableIRQ(TIM7_IRQn);	 //Habilitar periferico IRQ
+	HAL_NVIC_EnableIRQ(TIM7_IRQn);	 //Habilitar interrupciones del timer 7 stm32.h
 	__HAL_RCC_TIM7_CLK_ENABLE(); //Habilitar reloj del timer 7
 	
-	HAL_TIM_Base_Init(&htim7); //Configurar el timer
-	HAL_TIM_Base_Start_IT(&htim7); //Iniciar el timer
+	HAL_TIM_Base_Init(&htim7); //Iniciar el contador del timer
+	HAL_TIM_Base_Start_IT(&htim7); //Iniciar las interrupciones del timer
 	
 
 #ifdef RTE_CMSIS_RTOS2
