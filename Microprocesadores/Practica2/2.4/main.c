@@ -92,10 +92,10 @@ static void Error_Handler(void);
   * @param  None
   * @retval None
   */
-TIM_HandleTypeDef htim2; //Definimos el TIM2
-TIM_HandleTypeDef htim5; //Definimos el TIM5
-TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Estructura del Timer 2
-TIM_IC_InitTypeDef TIM_Channel_InitStruct2; //Estructura del Timer 5
+TIM_HandleTypeDef htim2; //Manejador del TIM2
+TIM_HandleTypeDef htim5; //Manejador del TIM5
+TIM_OC_InitTypeDef TIM_Channel_InitStruct; //Estructura en modo Output Compare
+TIM_IC_InitTypeDef TIM_Channel_InitStruct2; //Estructura en modo Input Capture
 uint32_t periodo = 4;
 uint32_t contador = 0;
 uint32_t captura[2];
@@ -111,18 +111,21 @@ static void init_GPIO(void){
 	__HAL_RCC_GPIOB_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO B
 	__HAL_RCC_GPIOC_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO C
 	
+	//Pin PC13 en modo interrupcion flanco de subida
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; //Habilitar el modo input
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN; //Habilitar resitencias pulldown del pin
+	GPIO_InitStruct.Pull = GPIO_NOPULL; //Habilitar resitencias pulldown del pin
 	GPIO_InitStruct.Pin = GPIO_PIN_13; //Definir al pin 13
 	
 	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); //Inicializar el pin 13
 	
+	//Pin PB11 en modo funcion alternativa del timer 2
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //Habilitar el modo funcion alternativa
 	GPIO_InitStruct.Alternate = GPIO_AF1_TIM2; //Definir el modo alternativo del pin
 	GPIO_InitStruct.Pin = GPIO_PIN_11; //Definir al pin 11
 	
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct); //Inicializar el pin 11
 	
+	//Pin PB0 en modo output
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; //Habilitar el modo push pull de los GPIO
 	GPIO_InitStruct.Pull = GPIO_PULLUP; //Habilitar resitencias pull up de los GPIO
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH; //Establecer velocidad de frecuencia en modo alto
@@ -130,6 +133,7 @@ static void init_GPIO(void){
 	GPIO_InitStruct.Pin = GPIO_PIN_0; //Definir los pines
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct); //Inicializar los pines
 	
+	//Pin A' en modo funcion alternativa del timer 5
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //Habilitar el modo funcion alternativa
 	GPIO_InitStruct.Pull = GPIO_NOPULL; //Habilitar el modo funcion alternativa
 	GPIO_InitStruct.Speed = GPIO_SPEED_LOW; //Habilitar el modo funcion alternativa
@@ -139,6 +143,7 @@ static void init_GPIO(void){
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct); //Inicializar el pin 0
 }
 
+//Timer 2 en modo Output Compare
 static void init_Timer2(uint32_t periodo){
 	
 	htim2.Instance = TIM2; 
@@ -147,39 +152,45 @@ static void init_Timer2(uint32_t periodo){
 	htim2.Init.Period = periodo; //Frecuencia de conteo = 10KHz/Period = Frecuencia de interrupcion
 	HAL_TIM_OC_Init(&htim2);
 	
+	//Configuraciones del Output
 	TIM_Channel_InitStruct.OCMode = TIM_OCMODE_TOGGLE;
 	TIM_Channel_InitStruct.OCPolarity = TIM_OCPOLARITY_HIGH;
 	TIM_Channel_InitStruct.OCFastMode = TIM_OCFAST_DISABLE;
 	
+	//Establecer configuraciones
 	HAL_TIM_OC_ConfigChannel(&htim2, &TIM_Channel_InitStruct, TIM_CHANNEL_4); //Configurar el canal
-	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_4); //Iniciar el timer
+	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_4); //Iniciar el Output
 }
 
+//TIM5 en modo Input Capture
 static void init_Timer5(void){
 	
 	htim5.Instance = TIM5; 
-	htim5.Init.Prescaler = 83; //Prescaler a 840, El reloj de APB1 es de 84 MHz / Prescaler (840x|) = 100KHz
-	htim5.Init.Period = 4294967294; //Frecuencia de conteo = 10KHz/Period = Frecuencia de interrupcion
+	htim5.Init.Prescaler = 83; //Prescaler a 84, El reloj de APB1 es de 84 MHz / Prescaler (84) = 1MHz
+	htim5.Init.Period = 4294967295; //2^32
 	htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-	HAL_TIM_IC_Init(&htim5);
+	HAL_TIM_IC_Init(&htim5); //Iniciar el timer en modo input
 	
-	TIM_Channel_InitStruct2.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
-	TIM_Channel_InitStruct2.ICSelection = TIM_ICSELECTION_DIRECTTI;
-	TIM_Channel_InitStruct2.ICPrescaler = TIM_ICPSC_DIV1;
+	//Configuracion del input
+	TIM_Channel_InitStruct2.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING; //Detectar flancos de subida
+	TIM_Channel_InitStruct2.ICSelection = TIM_ICSELECTION_DIRECTTI; //Configuraciones directa de canales
+	TIM_Channel_InitStruct2.ICPrescaler = TIM_ICPSC_DIV1; //Sin prescaler
 	TIM_Channel_InitStruct2.ICFilter = 0;
 	
 	HAL_TIM_IC_ConfigChannel(&htim5, &TIM_Channel_InitStruct2, TIM_CHANNEL_1); //Configurar el canal
-	HAL_TIM_IC_Start_IT(&htim5, TIM_CHANNEL_1); //Iniciar el timer
+	HAL_TIM_IC_Start_IT(&htim5, TIM_CHANNEL_1); //Iniciar las capturas
 }
 
+//Manejador de interrupciones del timer 5
 void TIM5_IRQHandler(void){
+	//Manejador de interrupciones del timer por HAL
 	HAL_TIM_IRQHandler(&htim5);
 }
 
-//Callback de la interrupcion
+//Callback de la interrupcion del HAL
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 	if(contador == 0){ //Primer captura del timer
-		captura[0] = HAL_TIM_ReadCapturedValue(&htim5,TIM_CHANNEL_1);
+		captura[0] = HAL_TIM_ReadCapturedValue(&htim5,TIM_CHANNEL_1); //Leer el valor en el PIN
 		contador = 1;
 	}else if(contador == 1){ //Segunda captura del timer
 		captura[1] = HAL_TIM_ReadCapturedValue(&htim5,TIM_CHANNEL_1);
@@ -189,17 +200,20 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 				diffCapture = (0xffffff - captura[0]) + captura[1];
 			}
 			frecuencia = TimerClock/prescaler;
-			frecuencia = frecuencia / diffCapture;
-			__HAL_TIM_SET_COUNTER(&htim5, 0);
+			frecuencia = frecuencia / diffCapture; //Calculo de Frecuencia
+			__HAL_TIM_SET_COUNTER(&htim5, 0); //Establecemos el contador del timer a 0
 			contador = 0;
 		}
 	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
 }
 
+//Manejador de interrupciones de los pines 10-15
 void EXTI15_10_IRQHandler(void){
+	//Manejador de interrupcioes de los GPIO HAL
 		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
 }
 	
+//Callback de las interrupciones de GPIO por HAL
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN){
 		if(periodo == 4){
 			periodo = 1;
@@ -207,6 +221,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN){
 		else if(periodo == 1){
 			periodo = 4;
 		}
+		HAL_TIM_OC_Stop(&htim2,TIM_CHANNEL_4); //Detener el timer para cambiar periodo
 		init_Timer2(periodo);
 }	
 	
