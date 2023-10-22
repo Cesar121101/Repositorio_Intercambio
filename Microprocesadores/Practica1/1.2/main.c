@@ -85,16 +85,19 @@ uint32_t HAL_GetTick (void) {
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 static void Error_Handler(void);
-static GPIO_InitTypeDef GPIO_InitStruct; //Definicion los GPIO
+static GPIO_InitTypeDef GPIO_InitStruct; //Manejador de GPIOS
 
 //Variables globales 
 static uint32_t frecuencia = 125;
 int contador = 0;
 
+//Manejador de interrupciones del 10-15 en el startup_stm32
 void EXTI15_10_IRQHandler(void){
+		//Manejador de Interrupciones de los GPIOS hal_gpio.c
 		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
 }
-	
+
+//Callback de las interrupciones de GPIO
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN){
 		if(frecuencia == 125){
 			frecuencia = 250;
@@ -139,17 +142,19 @@ int main(void)
 		
 		HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Habilitar las interrupciones del los puertos 10-15
 	
+	//Leds de la tarjeta B0,B7,B14
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; //Habilitar el modo push pull de los GPIO
 	GPIO_InitStruct.Pull = GPIO_PULLUP; //Habilitar resitencias pull up de los GPIO
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH; //Establecer velocidad de frecuencia en modo alto
 	
-	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14; //Definir los pines
+	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14; //Pines
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct); //Inicializar los pines
 	
-	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; //Habilitar el modo input
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN; //Deshabilitar resitencias del pin
+	//Boton PC13 para interrupciones
+	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING; //Habilitar el modo interrupcion en flancos de subida
+	GPIO_InitStruct.Pull = GPIO_NOPULL; //Deshabilitar resitencias del pin
 	
-	GPIO_InitStruct.Pin = GPIO_PIN_13; //Definir al pin 14
+	GPIO_InitStruct.Pin = GPIO_PIN_13; //Pines
 	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); //Inicializar el pin 14
 	
 	//Iniciar pines encendidos
