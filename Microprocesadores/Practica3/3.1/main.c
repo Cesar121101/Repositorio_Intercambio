@@ -141,6 +141,30 @@ static void init_GPIO(void){
 	HAL_GPIO_Init(GPIOD, &GPIO_InitStruct); //Inicializar los pines
 }
 
+void delay(uint32_t microsegundos)
+{	
+	uint32_t periodo = microsegundos - 1;
+	
+	// Configurar y arrancar el timer para generar un evento pasados n_microsegundos
+	htim7.Instance = TIM7; 
+	htim7.Init.Prescaler = 83; //Prescaler a 83, El reloj de APB1 es de 84 MHz / Prescaler (83) = 1MHz
+	htim7.Init.Period = periodo; //Para obtener el tiempo dividimos periodo/frecuencia de conteo (en este caso 10KHz)
+	__HAL_RCC_TIM7_CLK_ENABLE(); //Habilitar reloj del timer 7
+	
+	HAL_TIM_Base_Init(&htim7); //Configurar el timer
+	HAL_TIM_Base_Start(&htim7); //Iniciar el timer
+	
+	// Esperar a que se active el flag del registro de desbordamiento (overflow)
+	while ((htim7.Instance->SR & TIM_SR_UIF) == 0) {
+	}
+	// Borrar el flag de desbordamiento
+	htim7.Instance->SR &= ~TIM_SR_UIF;
+
+	// Parar el Timer y ponerlo a 0 para la siguiente llamada a la función
+	HAL_TIM_Base_Stop(&htim7);
+	__HAL_TIM_SET_COUNTER(&htim7, 0);
+}
+
 void LCD_Reset(void){
 	init_SPI(); //Inicializar SPI
 	init_GPIO(); //Iniciar GPIO
@@ -151,7 +175,7 @@ void LCD_Reset(void){
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_SET);
 	
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
-	HAL_Delay(1);
+	delay(10);
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
 }
 
