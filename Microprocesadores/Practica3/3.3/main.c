@@ -96,6 +96,7 @@ static void Error_Handler(void);
 
 extern ARM_DRIVER_SPI Driver_SPI1;
 ARM_DRIVER_SPI* SPIdrv = &Driver_SPI1;
+TIM_HandleTypeDef htim7; //Definimos el TIM7
 unsigned char buffer[512];
 
 void mySPI_callback(uint32_t event)
@@ -142,17 +143,41 @@ static void init_GPIO(void){
 	HAL_GPIO_Init(GPIOD, &GPIO_InitStruct); //Inicializar los pines
 }
 
+void delay(uint32_t microsegundos)
+{	
+	uint32_t periodo = microsegundos - 1;
+	
+	// Configurar y arrancar el timer para generar un evento pasados n_microsegundos
+	htim7.Instance = TIM7; 
+	htim7.Init.Prescaler = 83; //Prescaler a 83, El reloj de APB1 es de 84 MHz / Prescaler (83) = 1MHz
+	htim7.Init.Period = periodo; //Para obtener el tiempo dividimos periodo/frecuencia de conteo (en este caso 10KHz)
+	__HAL_RCC_TIM7_CLK_ENABLE(); //Habilitar reloj del timer 7
+	
+	HAL_TIM_Base_Init(&htim7); //Configurar el timer
+	HAL_TIM_Base_Start(&htim7); //Iniciar el timer
+	
+	// Esperar a que se active el flag del registro de desbordamiento (overflow)
+	while ((htim7.Instance->SR & TIM_SR_UIF) == 0) {
+	}
+	// Borrar el flag de desbordamiento
+	htim7.Instance->SR &= ~TIM_SR_UIF;
+
+	// Parar el Timer y ponerlo a 0 para la siguiente llamada a la función
+	HAL_TIM_Base_Stop(&htim7);
+	__HAL_TIM_SET_COUNTER(&htim7, 0);
+}
+
 void LCD_Reset(void){
 	init_SPI(); //Inicializar SPI
 	init_GPIO(); //Iniciar GPIO
-	
 	//Iniciar los pines en valor alto
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET); //Reset
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11,	GPIO_PIN_SET); //CS
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_SET); //A0
 	
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
-	HAL_Delay(1);
+	delay(10);
+	//HAL_Delay(1);
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
 }
 void LCD_wr_data(unsigned char data)
@@ -205,81 +230,6 @@ void LCD_Init(void){
 	LCD_wr_cmd(0xA6);
 }
 
-void LCD_clear(void)
-{
-	int i;
-	
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
-	LCD_wr_cmd(0xB0); // Página 0
-	for(i=0;i<128;i++){
-		LCD_wr_data(0x00);
-	}
-	
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
-	LCD_wr_cmd(0xB1); // Página 1
-	for(i=0;i<128;i++){
-		LCD_wr_data(0x00);
-	}
-
-	LCD_wr_cmd(0x00);
-	LCD_wr_cmd(0x10);
-	LCD_wr_cmd(0xB2); //Página 2
-	for(i=0;i<128;i++){
-		LCD_wr_data(0x00);
-	}
-
-	LCD_wr_cmd(0x00);
-	LCD_wr_cmd(0x10);
-	LCD_wr_cmd(0xB3); // Pagina 3
-	for(i=0;i<128;i++){
-		LCD_wr_data(0x00);
-	}
-}
-
-void LCD_update(void)
-{
-	int i;
-	
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
-	LCD_wr_cmd(0xB0); // Página 0
-	for(i=0;i<128;i++){
-		LCD_wr_data(buffer[i]);
-	}
-//	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
-//	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
-//	LCD_wr_cmd(0xB1); // Página 1
-
-//	for(i=128;i<256;i++){
-//		LCD_wr_data(0xFF);
-//	}
-
-//	LCD_wr_cmd(0x00);
-//	LCD_wr_cmd(0x10);
-//	LCD_wr_cmd(0xB2); //Página 2
-//	for(i=256;i<384;i++){
-//		LCD_wr_data(0xFF);
-//	}
-
-//	LCD_wr_cmd(0x00);
-//	LCD_wr_cmd(0x10);
-//	LCD_wr_cmd(0xB3); // Pagina 3
-
-
-//	for(i=384;i<512;i++){
-//		LCD_wr_data(0xFF);
-//	}
-}
-
-void data_display(void){
-	int j;
-	for(j = 0; j < 512; j++){
-		 buffer[j] = 0xFF;
-	}
-}
-
 int main(void)
 {
 
@@ -303,9 +253,6 @@ int main(void)
 	
 	LCD_Reset();
 	LCD_Init();
-	LCD_clear();
-	data_display();
-	LCD_update();
 
 #ifdef RTE_CMSIS_RTOS2
   /* Initialize CMSIS-RTOS2 */
