@@ -97,9 +97,10 @@ static void Error_Handler(void);
 
 extern ARM_DRIVER_SPI Driver_SPI1;
 ARM_DRIVER_SPI* SPIdrv = &Driver_SPI1;
-unsigned char buffer[512] = {0xE0, 0xFC, 0x1E, 0x13, 0x13, 0x1E, 0xFC, 0xE0};
+unsigned char buffer[512];
 TIM_HandleTypeDef htim7; //Definimos el TIM7
 int posicionL1 = 0;	
+int flagL2 =0;
 
 void mySPI_callback(uint32_t event)
 {
@@ -164,7 +165,7 @@ void delay(uint32_t microsegundos)
 	// Borrar el flag de desbordamiento
 	htim7.Instance->SR &= ~TIM_SR_UIF;
 
-	// Parar el Timer y ponerlo a 0 para la siguiente llamada a la funciÃ³n
+	// Parar el Timer y ponerlo a 0 para la siguiente llamada a la función
 	HAL_TIM_Base_Stop(&htim7);
 	__HAL_TIM_SET_COUNTER(&htim7, 0);
 }
@@ -190,7 +191,7 @@ void LCD_wr_data(unsigned char data)
  // Seleccionar A0 = 1;
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_SET); //A0
 
- // Escribir un dato (data) usando la funciÃ³n SPIDrv->Send(â€¦);
+ // Escribir un dato (data) usando la función SPIDrv->Send(…);
 	SPIdrv ->Send(&data, sizeof(data));
  // Esperar a que se libere el bus SPI;
 	while(SPIdrv->GetStatus().busy == 1){
@@ -207,7 +208,7 @@ void LCD_wr_cmd(unsigned char cmd)
  // Seleccionar A0 = 0;
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET); //A0
 
- // Escribir un comando (cmd) usando la funciÃ³n SPIDrv->Send(â€¦);
+ // Escribir un comando (cmd) usando la función SPIDrv->Send(…);
 	SPIdrv ->Send(&cmd, sizeof(cmd));
  // Esperar a que se libere el bus SPI;
 	while(SPIdrv->GetStatus().busy == 1){
@@ -236,23 +237,23 @@ void LCD_clear(void)
 {
 	int i;
 
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la direcciÃ³n a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la direcciÃ³n a 0
-	LCD_wr_cmd(0xB0); // PÃ¡gina 0
+	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
+	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
+	LCD_wr_cmd(0xB0); // Página 0
 	for(i=0;i<128;i++){
 		LCD_wr_data(0x00);
 	}
 
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la direcciÃ³n a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la direcciÃ³n a 0
-	LCD_wr_cmd(0xB1); // PÃ¡gina 1
+	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
+	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
+	LCD_wr_cmd(0xB1); // Página 1
 	for(i=0;i<128;i++){
 		LCD_wr_data(0x00);
 	}
 
 	LCD_wr_cmd(0x00);
 	LCD_wr_cmd(0x10);
-	LCD_wr_cmd(0xB2); //PÃ¡gina 2
+	LCD_wr_cmd(0xB2); //Página 2
 	for(i=0;i<128;i++){
 		LCD_wr_data(0x00);
 	}
@@ -268,32 +269,45 @@ void LCD_clear(void)
 void LCD_update(void)
 {
 	int i;
-
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la direcciÃ³n a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la direcciÃ³n a 0
-	LCD_wr_cmd(0xB0); // PÃ¡gina 0
-	for(i = 0; i < 128; i++){
+	int pagina1, pagina2, pagina3, pagina4;
+	if(posicionL1 > 128){
+		pagina1 = 128;
+		pagina2 = 256;
+		pagina3 = posicionL1;
+		pagina4 = posicionL1+128;
+	}else{
+		pagina1 = posicionL1;
+		pagina2 = pagina1+128;
+		pagina3 = 0;
+		pagina4 = 0;
+	}
+	
+	
+	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
+	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
+	LCD_wr_cmd(0xB0); // Página 0
+	for(i = 0; i < pagina1; i++){
 		LCD_wr_data(buffer[i]);
 	}
 	
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la direcciÃ³n a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la direcciÃ³n a 0
-	LCD_wr_cmd(0xB1); // PÃ¡gina 1
-	for(i = 128; i < 256; i++){
+	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
+	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
+	LCD_wr_cmd(0xB1); // Página 1
+	for(i = pagina1; i < pagina2; i++){
 		LCD_wr_data(buffer[i]);
 	}
 	
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la direcciÃ³n a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la direcciÃ³n a 0
-	LCD_wr_cmd(0xB2); // PÃ¡gina 2
-	for(i = 256; i < 384; i++){
+	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
+	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
+	LCD_wr_cmd(0xB2); // Página 2
+	for(i = pagina2; i < pagina3; i++){
 		LCD_wr_data(buffer[i]);
 	}
 	
-	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la direcciÃ³n a 0
-	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la direcciÃ³n a 0
-	LCD_wr_cmd(0xB3); // PÃ¡gina 3
-	for(i = 384; i < 512; i++){
+	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
+	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
+	LCD_wr_cmd(0xB3); // Página 3
+	for(i = 384; i < pagina4; i++){
 		LCD_wr_data(buffer[i]);
 	}
 }
@@ -302,8 +316,13 @@ void symbolToLocalBuffer_L1(uint8_t symbol){
 	uint8_t i, value1, value2;
 	uint16_t offset = 0;
 	
-	
 	offset = 25* (symbol - ' ');
+	if(posicionL1+Arial12x12[offset] > 127 && flagL2 ==0){
+		posicionL1 = 256;
+		flagL2 = 1;
+	}else if(posicionL1+Arial12x12[offset] > 383){
+		return;
+	}
 	for (i = 0; i < 12; i++){
 		value1 = Arial12x12[offset+i*2+1];
 		value2 = Arial12x12[offset+i*2+2];
@@ -338,7 +357,6 @@ int main(void)
 	LCD_Reset();
 	LCD_Init();
 	LCD_clear();
-	/*
 	symbolToLocalBuffer_L1('P');
 	symbolToLocalBuffer_L1('R');
 	symbolToLocalBuffer_L1('U');
@@ -357,10 +375,6 @@ int main(void)
 	symbolToLocalBuffer_L1(' ');
 	symbolToLocalBuffer_L1('L');
 	symbolToLocalBuffer_L1('1');
-	*/
-	
-	symbolToLocalBuffer_L1('|');
-	symbolToLocalBuffer_L1('|');
 	LCD_update();
 
 
