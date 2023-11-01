@@ -270,19 +270,12 @@ void LCD_update(void)
 {
 	int i;
 	int pagina1, pagina2, pagina3, pagina4;
-	if(posicionLCD > 128){
-		pagina1 = 128;
-		pagina2 = 256;
-		pagina3 = posicionLCD;
-		pagina4 = posicionLCD+128;
-	}else{
-		pagina1 = posicionLCD;
-		pagina2 = pagina1+128;
-		pagina3 = 0;
-		pagina4 = 0;
-	}
-	
-	
+	posicionLCD = posicionL2;
+	pagina1 = 128;
+	pagina2 = 256;
+	pagina3 = posicionLCD;
+	pagina4 = posicionLCD+128;
+
 	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
 	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
 	LCD_wr_cmd(0xB0); // Página 0
@@ -357,22 +350,27 @@ void symbolToLocalBuffer_L2(uint8_t symbol){
 	posicionLCD += Arial12x12[offset];
 }
 
-void symbolToLocalBuffer(uint8_t line,uint8_t symbol){
+void symbolToLocalBuffer(uint8_t line, uint8_t symbol){
 	if(full == 0){
 		uint8_t i, value1, value2;
 		uint16_t offset = 0;
 		
 		offset = 25* (symbol - ' ');
-		if(line == 2 && flagL2 ==0){
-			posicionLCD = 256;
+		if(line == 1){ //Cambiar a linea 1
+			posicionLCD = posicionL1;
+			flagL2 = 0;
+		}
+		if(line == 2){ //Cambiar a linea 2
+			posicionLCD = posicionL2;
 			flagL2 = 1;
-		}else if(posicionLCD > 383){
+		}
+		if(posicionLCD > 383){ //Si llegamos al final de la linea 2 ya no escribiremos 2
 			full = 1;
 			return;
 		}
-		if(symbol == ' ' && posicionLCD == 256){
+		if(symbol == ' ' && posicionLCD == 256){ //Primer caracter de la linea 2 vacio
 			return;
-		}
+		} 
 		for (i = 0; i < Arial12x12[offset]; i++){
 			if(i + posicionLCD > 127 && flagL2 == 0){
 				posicionLCD += i;
@@ -389,6 +387,12 @@ void symbolToLocalBuffer(uint8_t line,uint8_t symbol){
 			buffer[i+128 + posicionLCD] = value2;
 		}
 		posicionLCD += Arial12x12[offset];
+		if(line == 1){
+			posicionL1 += Arial12x12[offset];
+		}
+		if(line == 2){
+			posicionL2 += Arial12x12[offset];
+		}
 	}
 }
 
