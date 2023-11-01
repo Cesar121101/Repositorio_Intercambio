@@ -100,7 +100,7 @@ ARM_DRIVER_SPI* SPIdrv = &Driver_SPI1;
 unsigned char buffer[512];
 TIM_HandleTypeDef htim7; //Definimos el TIM7
 int posicionL1 = 0, posicionL2 = 256, posicionLCD = 0;;
-int flagL2 = 0, flagF2 = 0;
+int flagL2 = 0, flagF2 = 0, full = 0;
 
 void mySPI_callback(uint32_t event)
 {
@@ -317,7 +317,11 @@ void symbolToLocalBuffer_L1(uint8_t symbol){
 	uint16_t offset = 0;
 	
 	offset = 25* (symbol - ' ');
-	for (i = 0; i < 12; i++){
+	for (i = 0; i < Arial12x12[offset]; i++){
+		if(i + posicionLCD > 127){
+				posicionLCD += i;
+				return;
+		}
 		value1 = Arial12x12[offset+i*2+1];
 		value2 = Arial12x12[offset+i*2+2];
 		
@@ -338,7 +342,11 @@ void symbolToLocalBuffer_L2(uint8_t symbol){
 	}
 	
 	offset = 25* (symbol - ' ');
-	for (i = 0; i < 12; i++){
+	for (i = 0; i < Arial12x12[offset]; i++){
+		if(i + posicionLCD > 383){
+				posicionLCD += i;
+				return;
+		}
 		value1 = Arial12x12[offset+i*2+1];
 		value2 = Arial12x12[offset+i*2+2];
 		
@@ -349,25 +357,39 @@ void symbolToLocalBuffer_L2(uint8_t symbol){
 	posicionLCD += Arial12x12[offset];
 }
 
-void symbolToLocalBuffer(uint8_t symbol){
-	uint8_t i, value1, value2;
-	uint16_t offset = 0;
-	
-	offset = 25* (symbol - ' ');
-	if(posicionLCD+Arial12x12[offset] > 127 && flagL2 ==0){
-		posicionLCD = 256;
-		flagL2 = 1;
-	}else if(posicionLCD+Arial12x12[offset] > 383){
-		return;
-	}
-	for (i = 0; i < 12; i++){
-		value1 = Arial12x12[offset+i*2+1];
-		value2 = Arial12x12[offset+i*2+2];
+void symbolToLocalBuffer(uint8_t line,uint8_t symbol){
+	if(full == 0){
+		uint8_t i, value1, value2;
+		uint16_t offset = 0;
 		
-		buffer[i + posicionLCD] = value1;
-		buffer[i+128 + posicionLCD] = value2;
+		offset = 25* (symbol - ' ');
+		if(line == 2 && flagL2 ==0){
+			posicionLCD = 256;
+			flagL2 = 1;
+		}else if(posicionLCD > 383){
+			full = 1;
+			return;
+		}
+		if(symbol == ' ' && posicionLCD == 256){
+			return;
+		}
+		for (i = 0; i < Arial12x12[offset]; i++){
+			if(i + posicionLCD > 127 && flagL2 == 0){
+				posicionLCD += i;
+				return;
+			}
+			if(i + posicionLCD > 383){
+				posicionLCD += i;
+				return;
+			}
+			value1 = Arial12x12[offset+i*2+1];
+			value2 = Arial12x12[offset+i*2+2];
+			
+			buffer[i + posicionLCD] = value1;
+			buffer[i+128 + posicionLCD] = value2;
+		}
+		posicionLCD += Arial12x12[offset];
 	}
-	posicionLCD += Arial12x12[offset];
 }
 
 int main(void)
@@ -395,38 +417,38 @@ int main(void)
 	LCD_Init();
 	LCD_clear();
 	symbolToLocalBuffer_L1('P');
-	symbolToLocalBuffer_L1('R');
-	symbolToLocalBuffer_L1('U');
-	symbolToLocalBuffer_L1('E');
-	symbolToLocalBuffer_L1('B');
-	symbolToLocalBuffer_L1('A');
+	symbolToLocalBuffer_L1('r');
+	symbolToLocalBuffer_L1('u');
+	symbolToLocalBuffer_L1('e');
+	symbolToLocalBuffer_L1('b');
+	symbolToLocalBuffer_L1('a');
 	symbolToLocalBuffer_L1(' ');
-	symbolToLocalBuffer_L1('D');
-	symbolToLocalBuffer_L1('E');
+	symbolToLocalBuffer_L1('d');
+	symbolToLocalBuffer_L1('e');
 	symbolToLocalBuffer_L1(' ');
-	symbolToLocalBuffer_L1('T');
-	symbolToLocalBuffer_L1('E');
-	symbolToLocalBuffer_L1('X');
-	symbolToLocalBuffer_L1('T');
-	symbolToLocalBuffer_L1('O');
+	symbolToLocalBuffer_L1('t');
+	symbolToLocalBuffer_L1('e');
+	symbolToLocalBuffer_L1('x');
+	symbolToLocalBuffer_L1('t');
+	symbolToLocalBuffer_L1('o');
 	symbolToLocalBuffer_L1(' ');
 	symbolToLocalBuffer_L1('L');
 	symbolToLocalBuffer_L1('1');
 	symbolToLocalBuffer_L2('P');
-	symbolToLocalBuffer_L2('R');
-	symbolToLocalBuffer_L2('U');
-	symbolToLocalBuffer_L2('E');
-	symbolToLocalBuffer_L2('B');
-	symbolToLocalBuffer_L2('A');
+	symbolToLocalBuffer_L2('r');
+	symbolToLocalBuffer_L2('u');
+	symbolToLocalBuffer_L2('e');
+	symbolToLocalBuffer_L2('b');
+	symbolToLocalBuffer_L2('a');
 	symbolToLocalBuffer_L2(' ');
-	symbolToLocalBuffer_L2('D');
-	symbolToLocalBuffer_L2('E');
+	symbolToLocalBuffer_L2('d');
+	symbolToLocalBuffer_L2('e');
 	symbolToLocalBuffer_L2(' ');
-	symbolToLocalBuffer_L2('T');
-	symbolToLocalBuffer_L2('E');
-	symbolToLocalBuffer_L2('X');
-	symbolToLocalBuffer_L2('T');
-	symbolToLocalBuffer_L2('O');
+	symbolToLocalBuffer_L2('t');
+	symbolToLocalBuffer_L2('e');
+	symbolToLocalBuffer_L2('x');
+	symbolToLocalBuffer_L2('t');
+	symbolToLocalBuffer_L2('o');
 	symbolToLocalBuffer_L2(' ');
 	symbolToLocalBuffer_L2('L');
 	symbolToLocalBuffer_L2('2');
