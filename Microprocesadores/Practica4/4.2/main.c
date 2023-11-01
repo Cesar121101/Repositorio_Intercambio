@@ -293,7 +293,7 @@ void LCD_update(void)
 	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
 	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
 	LCD_wr_cmd(0xB1); // Página 1
-	for(i = pagina1; i < pagina2; i++){
+	for(i = 128; i < pagina2; i++){
 		LCD_wr_data(buffer[i]);
 	}
 	
@@ -317,12 +317,6 @@ void symbolToLocalBuffer_L1(uint8_t symbol){
 	uint16_t offset = 0;
 	
 	offset = 25* (symbol - ' ');
-	if(posicionL1+Arial12x12[offset] > 127 && flagL2 ==0){
-		posicionL1 = 256;
-		flagL2 = 1;
-	}else if(posicionL1+Arial12x12[offset] > 383){
-		return;
-	}
 	for (i = 0; i < 12; i++){
 		value1 = Arial12x12[offset+i*2+1];
 		value2 = Arial12x12[offset+i*2+2];
@@ -358,20 +352,20 @@ int main(void)
 	LCD_Init();
 	LCD_clear();
 	symbolToLocalBuffer_L1('P');
-	symbolToLocalBuffer_L1('R');
-	symbolToLocalBuffer_L1('U');
-	symbolToLocalBuffer_L1('E');
-	symbolToLocalBuffer_L1('B');
-	symbolToLocalBuffer_L1('A');
+	symbolToLocalBuffer_L1('r');
+	symbolToLocalBuffer_L1('u');
+	symbolToLocalBuffer_L1('e');
+	symbolToLocalBuffer_L1('b');
+	symbolToLocalBuffer_L1('a');
 	symbolToLocalBuffer_L1(' ');
-	symbolToLocalBuffer_L1('D');
-	symbolToLocalBuffer_L1('E');
+	symbolToLocalBuffer_L1('d');
+	symbolToLocalBuffer_L1('e');
 	symbolToLocalBuffer_L1(' ');
-	symbolToLocalBuffer_L1('T');
-	symbolToLocalBuffer_L1('E');
-	symbolToLocalBuffer_L1('X');
-	symbolToLocalBuffer_L1('T');
-	symbolToLocalBuffer_L1('O');
+	symbolToLocalBuffer_L1('t');
+	symbolToLocalBuffer_L1('e');
+	symbolToLocalBuffer_L1('x');
+	symbolToLocalBuffer_L1('t');
+	symbolToLocalBuffer_L1('o');
 	symbolToLocalBuffer_L1(' ');
 	symbolToLocalBuffer_L1('L');
 	symbolToLocalBuffer_L1('1');
