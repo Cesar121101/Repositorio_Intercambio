@@ -1,6 +1,8 @@
 #include "cmsis_os2.h"                          // CMSIS RTOS header file
 #include "stm32f4xx_hal.h"
-#include <stdlib.h>   
+#include <stdlib.h> 
+#include "stdio.h"
+#include "lcd.h"
 
 /*----------------------------------------------------------------------------
  *      Thread 1 'Thread_Name': Sample thread
@@ -9,6 +11,9 @@
 osThreadId_t Listener;                        // thread id
 extern osMessageQueueId_t id_MsgQueue; 
 void Listener_Func (void *argument);                   // thread function
+
+char str[50];
+int i;
 
 void init_GPIO(){
 	GPIO_InitTypeDef GPIO_InitStruct; //Estructura GPIO
@@ -28,6 +33,8 @@ int Init_Listener (void) {
     return(-1);
   }
 	init_GPIO();
+	LCD_Init();
+	LCD_clear();
   return(0);
 }
  
@@ -36,32 +43,32 @@ void Listener_Func (void *argument) {
 	uint8_t val=0;
   while (1) {
     status = osMessageQueueGet(id_MsgQueue, &val, NULL, 10U);   // wait for message
+		for(i = 0; i<sizeof(str); i++){
+			str[i] = ' ';
+		}
 		switch (val){
 			case 1:
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_7,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_RESET);
+				sprintf(str,"Arriba");
 				break;
 			case 2:
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_7,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_RESET);
+				sprintf(str,"Derecha");
 				break;
 			case 3:
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_7,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_RESET);
+				sprintf(str,"Abajo");
 				break;
 			case 4:
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_7,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_SET);
+				sprintf(str,"Izquierda");
 				break;
 			case 5:
-					HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(GPIOB,GPIO_PIN_7,GPIO_PIN_RESET);
-					HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_SET);				
+				sprintf(str,"Centro");				
 				break;
 		}
+		LCD_clear();
+		for(i = 0; i<sizeof(str); i++){
+			if(str[i] != NULL){
+				symbolToLocalBuffer(1,str[i]);
+			}
+		}
+		LCD_update();
   }
 }

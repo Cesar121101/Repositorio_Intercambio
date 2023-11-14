@@ -48,8 +48,7 @@ int Init_JoyThread (void) {
 }
  
 void Timer_Func (void *argument) {
-	int contador = 0; 
-	osTimerId_t timsoft1 = osTimerNew(Timer_Callback, osTimerOnce, &contador, NULL); //Crear el timer	
+	osTimerId_t timsoft1 = osTimerNew(Timer_Callback, osTimerOnce, NULL, NULL); //Crear el timer	
 	uint32_t status; //Flags de los Threads
   while (1) {
 		status=osThreadFlagsWait(0x1,osFlagsWaitAny,osWaitForever);
