@@ -9,9 +9,9 @@
 
 //Declaro el hilo 2 como externo
 osThreadId_t joystick;                        // thread id
-osMessageQueueId_t id_MsgQueue;  
+osMessageQueueId_t queue_joystick;  
 
-int init_joystick (void); 
+int init_Joystick (void); 
 void THJoystick (void *argument);                   // thread function
 
 uint8_t joystick_value = 0;
@@ -23,8 +23,8 @@ void Timer1_Callback(void *arg);
 //Timer para medir la duración de la pulsación por botón
 void Timer2_Callback(void *arg);
 
-int init_joystick (void) {
-	id_MsgQueue = osMessageQueueNew(16, sizeof(uint8_t), NULL);
+int init_Joystick (void) {
+	queue_joystick = osMessageQueueNew(16, sizeof(uint8_t), NULL);
   joystick = osThreadNew(THJoystick, NULL, NULL);
   if (joystick == NULL) {
     return(-1);
@@ -87,7 +87,7 @@ void Timer2_Callback(void *arg){
 		}
 	}
 	//Derecha 2 p16 mbed
-	else if(joystick_value == 1){
+	else if(joystick_value == 2){
 		if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) == GPIO_PIN_SET){
 			msg = 0b10010; //18
 		}
@@ -96,7 +96,7 @@ void Timer2_Callback(void *arg){
 		}
 	}
 	//Abajo 3 p12 mbed
-	else if(joystick_value == 1){
+	else if(joystick_value == 3){
 		if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_12) == GPIO_PIN_SET){
 			msg = 0b10011; //19
 		}
@@ -105,7 +105,7 @@ void Timer2_Callback(void *arg){
 		}
 	}
 	//Izquierda 4 p13 mbed
-	else if(joystick_value == 1){
+	else if(joystick_value == 4){
 		if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_14) == GPIO_PIN_SET){
 			msg = 0b10100; //20
 		}
@@ -114,7 +114,7 @@ void Timer2_Callback(void *arg){
 		}
 	}
 	//Pulsacion en el centro 5 p14 mbed
-	else if(joystick_value == 1){
+	else if(joystick_value == 5){
 		if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_15) == GPIO_PIN_SET){
 			msg = 0b10101; //21
 		}
@@ -122,5 +122,5 @@ void Timer2_Callback(void *arg){
 			msg = 0b00101;
 		}
 	}
-	status = osMessageQueuePut(id_MsgQueue, &msg, 0U, 0U);
+	status = osMessageQueuePut(queue_joystick, &msg, 0U, 0U);
 }
