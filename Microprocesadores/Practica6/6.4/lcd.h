@@ -9,5 +9,8 @@ void LCD_update(void);
 void symbolToLocalBuffer_L1(uint8_t symbol);
 void symbolToLocalBuffer_L2(uint8_t symbol);
 void symbolToLocalBuffer(uint8_t line,uint8_t symbol);
-
+void desplazarAbajo(void);
+void desplazarArriba(void);
+void desplazarDerecha(void);
+void desplazarIzquierda(void);
 #endif

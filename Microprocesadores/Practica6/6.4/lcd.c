@@ -10,28 +10,6 @@ TIM_HandleTypeDef htim7; //Definimos el TIM7
 int posicionL1 = 0, posicionL2 = 256, posicionLCD = 0;;
 int flagL2 = 0, flagF2 = 0, full = 0;
 
-//void mySPI_callback(uint32_t event)
-//{
-//    switch (event)
-//    {
-//    case ARM_SPI_EVENT_TRANSFER_COMPLETE:
-//        /* Success: Wakeup Thread */
-//        break;
-//    case ARM_SPI_EVENT_DATA_LOST:
-//        /*  Occurs in slave mode when data is requested/sent by master
-//            but send/receive/transfer operation has not been started
-//            and indicates that data is lost. Occurs also in master mode
-//            when driver cannot transfer data fast enough. */
-//        __breakpoint(0);  /* Error: Call debugger or replace with custom error handling */
-//        break;
-//    case ARM_SPI_EVENT_MODE_FAULT:
-//        /*  Occurs in master mode when Slave Select is deactivated and
-//            indicates Master Mode Fault. */
-//        __breakpoint(0);  /* Error: Call debugger or replace with custom error handling */
-//        break;
-//    }
-//}
-
 void init_SPI(void){
 	/* Initialize the SPI driver */
 	SPIdrv->Initialize(NULL);
@@ -182,38 +160,31 @@ void LCD_clear(void)
 void LCD_update(void)
 {
 	int i;
-	int pagina1, pagina2, pagina3, pagina4;
-	posicionLCD = posicionL2;
-	pagina1 = 128;
-	pagina2 = 256;
-	pagina3 = posicionLCD;
-	pagina4 = posicionLCD+128;
-
 	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
 	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
 	LCD_wr_cmd(0xB0); // Página 0
-	for(i = 0; i < pagina1; i++){
+	for(i = 0; i < 128; i++){
 		LCD_wr_data(buffer[i]);
 	}
 	
 	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
 	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
 	LCD_wr_cmd(0xB1); // Página 1
-	for(i = 128; i < pagina2; i++){
+	for(i = 128; i < 256; i++){
 		LCD_wr_data(buffer[i]);
 	}
 	
 	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
 	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
 	LCD_wr_cmd(0xB2); // Página 2
-	for(i = pagina2; i < pagina3; i++){
+	for(i = 256; i < 384; i++){
 		LCD_wr_data(buffer[i]);
 	}
 	
 	LCD_wr_cmd(0x00); // 4 bits de la parte baja de la dirección a 0
 	LCD_wr_cmd(0x10); // 4 bits de la parte alta de la dirección a 0
 	LCD_wr_cmd(0xB3); // Página 3
-	for(i = 384; i < pagina4; i++){
+	for(i = 384; i < 512; i++){
 		LCD_wr_data(buffer[i]);
 	}
 }
@@ -305,6 +276,78 @@ void symbolToLocalBuffer(uint8_t line, uint8_t symbol){
 		}
 		if(line == 2){
 			posicionL2 += Arial12x12[offset];
+		}
+	}
+}
+
+void desplazarAbajo(void){
+	unsigned char buffer2[512];
+	for(int i = 0; i < 512; i++){
+		buffer2[i] = buffer[i];
+	}
+	for(int i = 0; i < 512; i++){
+		if(i < 128){
+			buffer[i] = buffer2[384+i];
+		}
+		else{
+			buffer[i] = buffer2[i-128];
+		}
+	}
+}
+
+void desplazarArriba(void){
+	unsigned char buffer2[512];
+	for(int i = 0; i < 512; i++){
+		buffer2[i] = buffer[i];
+	}
+	for(int i = 0; i < 512; i++){
+		if(i > 383){
+			buffer[i] = buffer2[i-384];
+		}
+		else{
+			buffer[i] = buffer2[i+128];
+		}
+	}
+}
+
+void desplazarDerecha(void){
+	unsigned char buffer2[512];
+	for(int i = 0; i < 512; i++){
+		buffer2[i] = buffer[i];
+	}
+	for(int i = 0; i < 128; i++){
+		if(i == 0){
+			buffer[i] = buffer2[i+127];
+			buffer[i+128] = buffer2[i+255];
+			buffer[i+256] = buffer2[i+383];
+			buffer[i+384] = buffer2[i+511];
+		}
+		else{
+			buffer[i] = buffer2[i-1];
+			buffer[i+128] = buffer2[i+127];
+			buffer[i+256] = buffer2[i+255];
+			buffer[i+384] = buffer2[i+383];
+		}
+	}
+}
+
+void desplazarIzquierda(void){
+	unsigned char buffer2[512];
+	for(int i = 0; i < 512; i++){
+		buffer2[i] = buffer[i];
+	}
+	for(int i = 0; i < 128; i++){
+		if(i == 127){
+			buffer[i] = buffer2[i-127];
+			buffer[i+128] = buffer2[i+1];
+			buffer[i+256] = buffer2[i+129];
+			buffer[i+384] = buffer2[i+257];
+		}
+		else{
+			buffer[i] = buffer2[i+1];
+			buffer[i+128] = buffer2[i+129];
+			buffer[i+256] = buffer2[i+257];
+			buffer[i+384] = buffer2[i+385];
 		}
 	}
 }
