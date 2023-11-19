@@ -90,28 +90,50 @@ float ADC_getVoltage(ADC_HandleTypeDef *hadc, uint32_t Channel){
 		return voltage;
 }
 
+float valor_Temperatura(float voltaje){
+	float valorN,valorF;
+	valorN = (voltaje-0.02)/(3.2);
+	valorF = valorN * (25) + 5;
+	valorF = (valorF > 30) ? 30 : (valorF < 5) ? 5 : valorF;
+	return valorF;
+}
+
 int init_ADC(void) {
 	adc = osThreadNew(adc_Func, NULL, NULL); //Crear el Thread del timer
 	if (adc == NULL) {
     return(-1);
   }
-	queue_adc = osMessageQueueNew(16, sizeof(uint8_t), NULL);
+	queue_adc = osMessageQueueNew(4, sizeof(float), NULL);
   return(0);
 }
 
-float value;
-float value1;
-// Example of using this code from a Thread 
 void adc_Func (void *argument) {
   ADC_HandleTypeDef adchandle; //handler definition
 	ADC1_pins_F429ZI_config(); //specific PINS configuration
-	
 	ADC_Init_Single_Conversion(&adchandle , ADC1); //ADC1 configuration
+	float value1, value2;
+	float final1, final2, ant1, ant2;
+	int pot1 = 1, pot2 = 2;
+	uint32_t status;
   while (1) {
-    
-	  value=ADC_getVoltage(&adchandle , 10 ); //get values from channel 10->ADC123_IN10
-		value1=ADC_getVoltage(&adchandle , 13 );
-		osDelay(1000);
-   
+    status=osThreadFlagsWait(0x1,osFlagsWaitAny,osWaitForever);
+		switch (status){
+			case 1:
+				value1=ADC_getVoltage(&adchandle , 10 );
+				value2=ADC_getVoltage(&adchandle , 13 );
+				final1 = valor_Temperatura(value1);
+				final2 = valor_Temperatura(value2);
+				if(ant1 != final1){
+					ant1 = final1;
+					osMessageQueuePut(queue_adc, &pot1, 0U, 0U);
+					osMessageQueuePut(queue_adc, &final1, 0U, 0U);
+				}
+				if(ant2 != final2){
+					ant2 = final2;
+					osMessageQueuePut(queue_adc, &pot2, 0U, 0U);
+					osMessageQueuePut(queue_adc, &final2, 0U, 0U);
+				}
+			break;
+		}
   }
 }
