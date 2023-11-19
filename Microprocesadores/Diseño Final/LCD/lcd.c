@@ -1,6 +1,14 @@
-#include "lcd.h"
+#include "cmsis_os2.h"                          // CMSIS RTOS header file
+#include "stm32f4xx_hal.h"
+#include <stdlib.h> 
+#include "stdio.h"
 #include "Driver_SPI.h"
 #include "Arial12x12.h"
+
+osThreadId_t lcd;                        // thread id
+void lcd_Func(void *argument);                   // thread function
+
+extern osMessageQueueId_t queue_lcd;
 
 extern ARM_DRIVER_SPI Driver_SPI1;
 ARM_DRIVER_SPI* SPIdrv = &Driver_SPI1;
@@ -350,4 +358,36 @@ void desplazarIzquierda(void){
 			buffer[i+384] = buffer2[i+385];
 		}
 	}
+}
+
+int init_LCD(void) {
+	lcd = osThreadNew(lcd_Func, NULL, NULL); //Crear el Thread del timer
+	if (lcd == NULL) {
+    return(-1);
+  }
+	LCD_Init();
+	LCD_clear();
+  return(0);
+}
+ 
+void lcd_Func(void *argument) {
+	osStatus_t status;
+	uint8_t linea;
+	uint8_t letra;
+	LCD_clear();
+  while (1) {
+    status = osMessageQueueGet(queue_lcd, &linea, NULL, 10U);   // wait for message
+		switch (linea){
+			case 1:
+				osMessageQueueGet(queue_lcd, &letra, NULL, 10U);   // wait for message
+				symbolToLocalBuffer(1,letra);
+				break;
+			case 2:
+				osMessageQueueGet(queue_lcd, &letra, NULL, 10U);   // wait for message
+				symbolToLocalBuffer(2,letra);
+				break;
+		}
+		LCD_update();
+		linea = 0;
+	}		
 }
