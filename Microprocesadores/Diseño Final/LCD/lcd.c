@@ -369,25 +369,30 @@ int init_LCD(void) {
 	LCD_clear();
   return(0);
 }
- 
+
 void lcd_Func(void *argument) {
 	osStatus_t status;
 	uint8_t linea;
 	uint8_t letra;
 	LCD_clear();
   while (1) {
-    status = osMessageQueueGet(queue_lcd, &linea, NULL, 10U);   // wait for message
+		do{
+		status = osMessageQueueGet(queue_lcd, &linea, NULL, 10U);   // wait for message
+		}while(status != osOK);
 		switch (linea){
 			case 1:
 				osMessageQueueGet(queue_lcd, &letra, NULL, 10U);   // wait for message
 				symbolToLocalBuffer(1,letra);
+				LCD_update();
 				break;
 			case 2:
 				osMessageQueueGet(queue_lcd, &letra, NULL, 10U);   // wait for message
 				symbolToLocalBuffer(2,letra);
+				LCD_update();
 				break;
+			case 3:
+				LCD_clear();
 		}
-		LCD_update();
 		linea = 0;
 	}		
 }
