@@ -48,7 +48,7 @@ void ThreadRGB (void *argument) {
 	initLeds();
 	osStatus_t status;
 	float msg;
-	float Tr = 28.0f;
+	float Tr = 25.0f;
   while (1) {
 		status = osMessageQueueGet(queue_temperatura, &msg, NULL, 10U);
 		x = Tr - msg;
