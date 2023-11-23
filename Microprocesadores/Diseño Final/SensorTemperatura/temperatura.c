@@ -18,9 +18,8 @@ extern ARM_DRIVER_I2C Driver_I2C1;
 ARM_DRIVER_I2C* I2Cdrv = &Driver_I2C1;
 
 static osStatus_t status;
-uint8_t aux;
 float temperaturaSensor = 0.0f;
-uint16_t aux2;
+uint16_t lecturaSensor;
 
 void init_I2C(void){
 	/* Initialize the I2C driver */
@@ -83,14 +82,14 @@ void THTemperatura(void *argument) {
 		I2Cdrv->MasterReceive(LM75B_ADDRESS, data, 2, false);
 		while (I2Cdrv->GetStatus().busy);
 		// Combinar los dos bytes para formar el valor de temperatura completo (11 bits)
-		aux2 = ((data[0] << 8) | data[1]) >> 5;
+		lecturaSensor = ((data[0] << 8) | data[1]) >> 5;
 
 		// Signo extendido para números negativos (si es necesario)
-		if (aux2 & (1 << 10)){
-				aux2 |= 0xFC00;
+		if (lecturaSensor & (1 << 10)){
+				lecturaSensor |= 0xFC00;
 		}
 		 
-		temperaturaSensor = aux2 * 0.125;
+		temperaturaSensor = lecturaSensor * 0.125;
 		
 		status = osMessageQueuePut(queue_temperatura, &temperaturaSensor, 0U, 0U);
 
