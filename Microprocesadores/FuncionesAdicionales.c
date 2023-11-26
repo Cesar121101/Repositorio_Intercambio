@@ -33,35 +33,11 @@ void desplazar(){
 	symbolToLocalBuffer(1,'@');
 	LCD_update();
 	if(contador < 97 && valor == 0){
-		for(int i = 0; i < 512; i++){
-			buffer2[i] = buffer[i];
-		}
-		for(int i = 0; i < 128; i++){
-			if(i == 0){
-				buffer[i] = buffer2[i+127];
-				buffer[i+128] = buffer2[i+255];
-			}
-			else{
-				buffer[i] = buffer2[i-1];
-				buffer[i+128] = buffer2[i+127];
-			}
-		}
+		desplazarDerecha();
 		contador++;
 	}else{
 		valor = 1;
-		for(int i = 0; i < 512; i++){
-				buffer2[i] = buffer[i];
-		}
-		for(int i = 0; i < 128; i++){
-			if(i == 127){
-				buffer[i] = buffer2[i-127];
-				buffer[i+128] = buffer2[i+1];
-			}
-			else{
-				buffer[i] = buffer2[i+1];
-				buffer[i+128] = buffer2[i+129];
-			}
-		}
+		desplazarIzquierda();
 		contador--;
 		if(contador == 9){
 			valor = 0;
