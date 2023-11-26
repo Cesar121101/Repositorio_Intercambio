@@ -46,19 +46,7 @@ void desplazar(){
 	LCD_update();
 }
 
-void obtenerPosicion(int p){ //Obtiene la posicion del LCD deacuerdo a la posicion que pasemos
-	uint8_t real = posicion;
-	uint8_t abajo = real & 0x0F;
-	uint8_t arriba = real & 0xF0;
-	arriba = arriba >> 4;
-	arriba = arriba | 0x10;
-	LCD_wr_cmd(abajo);
-	LCD_wr_cmd(arriba);
-	LCD_wr_cmd(0xB0); // Página 0
-}
-
-
-void pintaPelota(int posicion){
+void pintaPelota(int posicion){ //Obtiene la posicion del LCD deacuerdo a la posicion que pasemos
 	uint8_t real, arriba, abajo; //Declarar fuera de la funcion
 	LCD_clear();
 	uint8_t real = posicion;
@@ -77,6 +65,21 @@ void pintaPelota(int posicion){
 	LCD_wr_cmd(0xB1); // Página 1
 	for(int i = 0; i < 8; i++){
 		LCD_wr_data(0x0F);
+	}
+}
+
+void mainPelota(){ //Thread para dibujar pelota
+	uint8_t arriba = 0x10,abajo = 0x00;
+	uint32_t status;
+	uint8_t valor, contador = 8, contador2 = 0;
+	pintaPelota(0);
+	while (1) {
+		osThreadFlagsWait(0x1,osFlagsWaitAny,osWaitForever); //Esperar Banderas
+		pintaPelota(contador);
+		contador += 8;
+		if(contador > 120){
+			contador = 0;
+		}
 	}
 }
 
