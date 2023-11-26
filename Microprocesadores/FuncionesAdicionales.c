@@ -1,5 +1,6 @@
 //Diagonales pagina 1
 void diagonales(){
+	//Fuera del while
 	uint8_t contador = 0;
 	LCD_wr_cmd(abajo);
 	LCD_wr_cmd(arriba);
@@ -27,6 +28,10 @@ void diagonales(){
 
 //Desplazar izquierda y derecha un numero finito de veces (contador = numero de veces a desplazar y valor es una flag)
 void desplazar(){
+	//Fuera del while 
+	posicionL1 = 9; //Posicion inicial de la letra
+	symbolToLocalBuffer(1,'@');
+	LCD_update();
 	if(contador < 97 && valor == 0){
 		for(int i = 0; i < 512; i++){
 			buffer2[i] = buffer[i];
