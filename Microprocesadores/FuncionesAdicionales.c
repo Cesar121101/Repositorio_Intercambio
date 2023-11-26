@@ -56,3 +56,46 @@ void obtenerPosicion(int p){ //Obtiene la posicion del LCD deacuerdo a la posici
 	LCD_wr_cmd(arriba);
 	LCD_wr_cmd(0xB0); // Página 0
 }
+
+void cuadricula8x8(){ //Dibuja la cuadricula de 8x8
+	uint8_t arriba = 0x10,abajo = 0x00;
+	uint32_t status;
+	uint8_t valor, contador = 0, contador2 = 0, bandera = 1;
+	uint8_t pagina1, pagina2;
+	while (1) {
+	if(contador < 16){
+		if(contador %2 == 0){
+			pagina1 = 0xB0;
+			pagina2 = 0xB2;
+		}else{
+			pagina1 = 0xB1;
+			pagina2 = 0xB3;
+		}
+		LCD_wr_cmd(abajo);
+		LCD_wr_cmd(arriba);
+		LCD_wr_cmd(pagina1); // Página 0
+		for(int i = 0; i < 8; i++){
+			LCD_wr_data(0xFF);
+		}
+		LCD_wr_cmd(abajo);
+		LCD_wr_cmd(arriba);
+		LCD_wr_cmd(pagina2); // Página 0
+		for(int i = 0; i < 8; i++){
+			LCD_wr_data(0xFF);
+		}
+		if(bandera == 0){
+			abajo = 0x00;
+			bandera = 1;
+		}else{
+			abajo = 0x08;
+			bandera = 0;
+		}
+		contador2++;
+		if(contador2 == 2){
+			contador2 = 0;
+			arriba++;
+		}
+		contador++;
+		osDelay(500);
+	}
+}
