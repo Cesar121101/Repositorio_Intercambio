@@ -27,23 +27,28 @@ void diagonales(){
 }
 
 //Desplazar izquierda y derecha un numero finito de veces (contador = numero de veces a desplazar y valor es una flag)
-void desplazar(){
-	//Fuera del while 
-	posicionL1 = 9; //Posicion inicial de la letra
+void desplazar() {
+	uint8_t arriba = 0x10,abajo = 0x00;
+	uint32_t status;
+	uint8_t valor = 0, contador = 9, contador2 = 0;
+	posicionL1 = 9;
 	symbolToLocalBuffer(1,'@');
 	LCD_update();
-	if(contador < 97 && valor == 0){
-		desplazarDerecha();
-		contador++;
-	}else{
-		valor = 1;
-		desplazarIzquierda();
-		contador--;
-		if(contador == 9){
-			valor = 0;
+	while (1) { //Desplazamos la letra 97 veces a la derecha y luego 97 a la izquierda
+		if(contador < 97 && valor == 0){
+			desplazarDerecha();
+			contador++;
+		}else{
+			valor = 1;
+			desplazarIzquierda();
+			contador--;
+			if(contador == 9){
+				valor = 0;
+			}
 		}
+		LCD_update();
+		osDelay(100);
 	}
-	LCD_update();
 }
 
 void pintaPelota(int posicion){ //Obtiene la posicion del LCD deacuerdo a la posicion que pasemos
