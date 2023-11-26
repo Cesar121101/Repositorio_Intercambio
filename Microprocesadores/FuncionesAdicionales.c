@@ -46,3 +46,13 @@ void desplazar(){
 	LCD_update();
 }
 
+void obtenerPosicion(int p){ //Cambia de posicion entera a la posicion del LCD pagina 0
+	uint8_t real = posicion;
+	uint8_t abajo = real & 0x0F;
+	uint8_t arriba = real & 0xF0;
+	arriba = arriba >> 4;
+	arriba = arriba | 0x10;
+	LCD_wr_cmd(abajo);
+	LCD_wr_cmd(arriba);
+	LCD_wr_cmd(0xB0); // Página 0
+}
