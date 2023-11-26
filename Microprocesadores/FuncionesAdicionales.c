@@ -57,6 +57,59 @@ void obtenerPosicion(int p){ //Obtiene la posicion del LCD deacuerdo a la posici
 	LCD_wr_cmd(0xB0); // Página 0
 }
 
+
+void pintaPelota(int posicion){
+	uint8_t real, arriba, abajo; //Declarar fuera de la funcion
+	LCD_clear();
+	uint8_t real = posicion;
+	uint8_t abajo = real & 0x0F;
+	uint8_t arriba = real & 0xF0;
+	arriba = arriba >> 4;
+	arriba = arriba | 0x10;
+	LCD_wr_cmd(abajo);
+	LCD_wr_cmd(arriba);
+	LCD_wr_cmd(0xB0); // Página 0
+	for(int i = 0; i < 8; i++){
+		LCD_wr_data(0xFF);
+	}
+	LCD_wr_cmd(abajo);
+	LCD_wr_cmd(arriba);
+	LCD_wr_cmd(0xB1); // Página 1
+	for(int i = 0; i < 8; i++){
+		LCD_wr_data(0x0F);
+	}
+}
+
+void dibujarRectangulo(){
+	uint8_t arriba = 0x10,abajo = 0x00;
+	uint32_t status;
+	while (1) {
+		status=osThreadFlagsWait(0x3,osFlagsWaitAny,osWaitForever); //Esperar Banderas
+		LCD_clear();
+		switch (status){
+			case 1:
+				contador++;
+				derecha++;
+				break;
+			case 2:
+				contador--;
+				izquierda++;
+				break;
+		}
+		LCD_wr_cmd(abajo);
+		LCD_wr_cmd(arriba);
+		LCD_wr_cmd(0xB0); // Página 0
+		for(int i = 0; i < contador; i++){
+			LCD_wr_data(0xFF);
+		}
+		LCD_wr_cmd(abajo);
+		LCD_wr_cmd(arriba);
+		LCD_wr_cmd(0xB1); // Página 0
+		for(int i = 0; i < contador; i++){
+			LCD_wr_data(0xFF);
+		}
+}
+
 void cuadricula8x8(){ //Dibuja la cuadricula de 8x8
 	uint8_t arriba = 0x10,abajo = 0x00;
 	uint32_t status;
