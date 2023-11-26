@@ -1,28 +1,21 @@
 //Diagonales pagina 1
-void diagonales(){
-	//Fuera del while
-	uint8_t contador = 0;
+void diagonales() {
+	uint8_t arriba = 0x10,abajo = 0x00;
+	uint32_t status;
+	uint8_t contador = 0, data = 0x01;
 	LCD_wr_cmd(abajo);
 	LCD_wr_cmd(arriba);
 	LCD_wr_cmd(0xB0); // Página 0
- 	if(contador < 16){
-		LCD_wr_data(0x01);
-		osDelay(200);
-		LCD_wr_data(0x02);
-		osDelay(200);
-		LCD_wr_data(0x04);
-		osDelay(200);
-		LCD_wr_data(0x08);
-		osDelay(200);
-		LCD_wr_data(0x10);
-		osDelay(200);
-		LCD_wr_data(0x20);
-		osDelay(200);
-		LCD_wr_data(0x40);
-		osDelay(200);
-		LCD_wr_data(0x80);
-		osDelay(200);
-		contador++;
+	while (1) {
+		if(contador < 128){
+			LCD_wr_data(data);
+			contador++;
+			data = data << 1;
+			if(contador%8 == 0){
+				data = 0x01;
+			}
+			osDelay(200);
+		}
 	}
 }
 
