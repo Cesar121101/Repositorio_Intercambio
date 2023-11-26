@@ -1,5 +1,4 @@
 //Diagonales pagina 1
-
 void diagonales(){
 	uint8_t contador = 0;
 	LCD_wr_cmd(abajo);
