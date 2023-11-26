@@ -5,7 +5,7 @@ void diagonales(){
 	LCD_wr_cmd(abajo);
 	LCD_wr_cmd(arriba);
 	LCD_wr_cmd(0xB0); // Página 0
- 	while(contador < 16){
+ 	if(contador < 16){
 		LCD_wr_data(0x01);
 		osDelay(200);
 		LCD_wr_data(0x02);
@@ -97,5 +97,68 @@ void cuadricula8x8(){ //Dibuja la cuadricula de 8x8
 		}
 		contador++;
 		osDelay(500);
+	}
+}
+
+void lineahorizontal(){
+	uint8_t arriba = 0x10,abajo = 0x00;
+	uint32_t status;
+	uint8_t valor, contador = 0, data = 0x01;
+	while (1) {
+		if(contador < 8){
+			LCD_clear();
+			LCD_wr_cmd(abajo);
+			LCD_wr_cmd(arriba);
+			LCD_wr_cmd(0xB0); // Página 0
+			for(int i = 0; i < 128; i++){
+				LCD_wr_data(data);
+			}
+			data = data << 1;
+			contador++;
+			if(contador == 8){
+				data = 0x01;
+			}
+		}else if(contador < 16){
+			LCD_clear();
+			LCD_wr_cmd(abajo);
+			LCD_wr_cmd(arriba);
+			LCD_wr_cmd(0xB1); // Página 0
+			for(int i = 0; i < 128; i++){
+				LCD_wr_data(data);
+			}
+			data = data << 1;
+			contador++;
+			if(contador == 16){
+				data = 0x01;
+			}
+		}else if(contador < 24){
+			LCD_clear();
+			LCD_wr_cmd(abajo);
+			LCD_wr_cmd(arriba);
+			LCD_wr_cmd(0xB2); // Página 0
+			for(int i = 0; i < 128; i++){
+				LCD_wr_data(data);
+			}
+			data = data << 1;
+			contador++;
+			if(contador == 24){
+				data = 0x01;
+			}
+		}else if(contador < 32){
+			LCD_clear();
+			LCD_wr_cmd(abajo);
+			LCD_wr_cmd(arriba);
+			LCD_wr_cmd(0xB3); // Página 0
+			for(int i = 0; i < 128; i++){
+				LCD_wr_data(data);
+			}
+			data = data << 1;
+			contador++;
+			if(contador == 32){
+				contador = 0;
+				data = 0x01;
+			}
+		}
+		osDelay(200);
 	}
 }
