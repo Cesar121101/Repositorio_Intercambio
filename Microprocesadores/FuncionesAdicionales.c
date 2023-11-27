@@ -216,3 +216,43 @@ void lineahorizontal(){
 		osDelay(200);
 	}
 }
+
+void 8cuadrantes(){
+	uint8_t arriba = 0x10,abajo = 0x00;
+	uint32_t status;
+	uint8_t valor, contador = 0, flag = 0, pagina1,pagina2;
+	
+	while (1) {
+		if(contador < 8){
+			status=osThreadFlagsWait(0x1,osFlagsWaitAny,osWaitForever); //Esperar Banderas
+			switch (status){
+				case 1:
+					if(contador < 4){
+						pagina1 = 0xB0;
+						pagina2 = 0xB1;
+					}else{
+						if(flag == 0){
+							arriba = 0x10;
+							flag = 1;
+						}
+						pagina1 = 0xB2;
+						pagina2 = 0xB3;
+					}
+					break;
+			}
+			LCD_wr_cmd(abajo);
+			LCD_wr_cmd(arriba);
+			LCD_wr_cmd(pagina1); // Página 0
+			for(int i = 0; i < 32; i++){
+				LCD_wr_data(0xFF);
+			}
+			LCD_wr_cmd(abajo);
+			LCD_wr_cmd(arriba);
+			LCD_wr_cmd(pagina2); // Página 0
+			for(int i = 0; i < 32; i++){
+				LCD_wr_data(0xFF);
+			}
+			arriba+=2;
+			contador++;
+		}
+}
