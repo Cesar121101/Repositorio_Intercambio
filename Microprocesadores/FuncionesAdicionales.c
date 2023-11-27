@@ -217,7 +217,7 @@ void lineahorizontal(){
 	}
 }
 
-void 8cuadrantes(){
+void cuadrantes8(){
 	uint8_t arriba = 0x10,abajo = 0x00;
 	uint32_t status;
 	uint8_t valor, contador = 0, flag = 0, pagina1,pagina2;
