@@ -68,8 +68,11 @@ void init_USART(){
 
 int init_COM(void) {
 	com_recibir = osThreadNew(recibir_Func, NULL, NULL);
-	com_enviar = osThreadNew(enviar_Func, NULL, NULL);
 	if (com_recibir == NULL) {
+    return(-1);
+  }
+	com_enviar = osThreadNew(enviar_Func, NULL, NULL);
+	if (com_enviar == NULL) {
     return(-1);
   }
 	init_USART();
