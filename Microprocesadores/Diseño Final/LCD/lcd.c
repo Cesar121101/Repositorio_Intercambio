@@ -8,15 +8,20 @@
 osThreadId_t lcd;                        // thread id
 void lcd_Func(void *argument);                   // thread function
 
-extern osMessageQueueId_t queue_lcd;
+osMessageQueueId_t queue_lcd;
 
 extern ARM_DRIVER_SPI Driver_SPI1;
 ARM_DRIVER_SPI* SPIdrv = &Driver_SPI1;
-
 unsigned char buffer[512];
-TIM_HandleTypeDef htim7; //Definimos el TIM7
 int posicionL1 = 0, posicionL2 = 256, posicionLCD = 0;;
 int flagL2 = 0, flagF2 = 0, full = 0;
+
+typedef struct {                               
+  uint8_t linea;
+	char cadena[25];
+	bool subrayar;
+	uint8_t numero;
+} msgQueue_LCD;
 
 void init_SPI(void){
 	/* Initialize the SPI driver */
@@ -30,18 +35,36 @@ void init_SPI(void){
 static void init_GPIO(void){
 	GPIO_InitTypeDef GPIO_InitStruct; //Definicion los GPIO
 
+	__HAL_RCC_GPIOA_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO A
+	__HAL_RCC_GPIOB_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO B
 	__HAL_RCC_GPIOD_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO D
+	__HAL_RCC_GPIOF_CLK_ENABLE();	 //Habilitar el reloj de los puertos GPIO F
 
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; //Habilitar el modo push pull de los GPIO
-	GPIO_InitStruct.Pull = GPIO_PULLUP; //Habilitar resitencias pull up de los GPIO
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH; //Establecer velocidad de frecuencia en modo alto
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; 
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 
-	GPIO_InitStruct.Pin = GPIO_PIN_12 | GPIO_PIN_11 | GPIO_PIN_7; //Definir los pines
-	HAL_GPIO_Init(GPIOD, &GPIO_InitStruct); //Inicializar los pines
+	GPIO_InitStruct.Pin = GPIO_PIN_14; //CS
+	HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = GPIO_PIN_13; //A0
+	HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = GPIO_PIN_6; //Reset
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	
+	//LED 1,2 y 3
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	
+	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
 void delay(uint32_t microsegundos)
 {	
+	TIM_HandleTypeDef htim7; //Definimos el TIM7
 	uint32_t periodo = microsegundos - 1;
 	
 	// Configurar y arrancar el timer para generar un evento pasados n_microsegundos
@@ -69,21 +92,21 @@ void LCD_Reset(void){
 	init_GPIO(); //Iniciar GPIO
 
 	//Iniciar los pines en valor alto
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET); //Reset
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11,	GPIO_PIN_SET); //CS
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_SET); //A0
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET); //Reset
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14,	GPIO_PIN_SET); //CS
+	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET); //A0
 
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
-	delay(1);
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
+	delay(10);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
 }
 void LCD_wr_data(unsigned char data)
 {
  // Seleccionar CS = 0;
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11,	GPIO_PIN_RESET); //CS
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14,	GPIO_PIN_RESET); //CS
 
  // Seleccionar A0 = 1;
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_SET); //A0
+	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET); //A0
 
  // Escribir un dato (data) usando la función SPIDrv->Send(…);
 	SPIdrv ->Send(&data, sizeof(data));
@@ -92,15 +115,15 @@ void LCD_wr_data(unsigned char data)
 
 	}
  // Seleccionar CS = 1;
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11,	GPIO_PIN_SET); //CS
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14,	GPIO_PIN_SET); //CS
 }
 
 void LCD_wr_cmd(unsigned char cmd)
 {
  // Seleccionar CS = 0;
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11,	GPIO_PIN_RESET); //CS
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14,	GPIO_PIN_RESET); //CS
  // Seleccionar A0 = 0;
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET); //A0
+	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13 , GPIO_PIN_RESET); //A0
 
  // Escribir un comando (cmd) usando la función SPIDrv->Send(…);
 	SPIdrv ->Send(&cmd, sizeof(cmd));
@@ -109,7 +132,7 @@ void LCD_wr_cmd(unsigned char cmd)
 
 	}
  // Seleccionar CS = 1;
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11,	GPIO_PIN_SET); //CS
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14,	GPIO_PIN_SET); //CS
 }
 
 void LCD_Init(void){
@@ -260,9 +283,6 @@ void symbolToLocalBuffer(uint8_t line, uint8_t symbol){
 			full = 1;
 			return;
 		}
-		if(symbol == ' ' && posicionLCD == 256){ //Primer caracter de la linea 2 vacio
-			return;
-		} 
 		for (i = 0; i < Arial12x12[offset]; i++){
 			if(i + posicionLCD > 127 && flagL2 == 0){
 				posicionLCD += i;
@@ -360,11 +380,39 @@ void desplazarIzquierda(void){
 	}
 }
 
+void subrayado(uint8_t numero){
+	int i=0;
+	int posicion;
+	if(numero == 0){
+		posicion = 0;
+	}else if(numero == 1){
+		posicion = 6;
+	}else if(numero == 2){
+		posicion = 14;
+	}else if(numero == 3){
+		posicion = 20;
+	}else if(numero == 4){
+		posicion = 28;
+	}else if(numero == 5){
+		posicion = 34;
+	}else if(numero == 6){
+		posicion = 69;
+	}else if(numero == 7){
+		posicion = 75;
+	}else if(numero == 8){
+		posicion = 83;
+	}
+	for(i = 0; i < 6; i++){
+		buffer[i+posicion+408] += 0x04;
+	}
+}
+
 int init_LCD(void) {
 	lcd = osThreadNew(lcd_Func, NULL, NULL); //Crear el Thread del timer
 	if (lcd == NULL) {
     return(-1);
   }
+	queue_lcd = osMessageQueueNew(4, sizeof(msgQueue_LCD), NULL);
 	LCD_Init();
 	LCD_clear();
   return(0);
@@ -372,27 +420,49 @@ int init_LCD(void) {
 
 void lcd_Func(void *argument) {
 	osStatus_t status;
-	uint8_t linea;
-	uint8_t letra;
-	LCD_clear();
+	msgQueue_LCD mensaje;
   while (1) {
-		do{
-		status = osMessageQueueGet(queue_lcd, &linea, NULL, 10U);   // wait for message
-		}while(status != osOK);
-		switch (linea){
-			case 1:
-				osMessageQueueGet(queue_lcd, &letra, NULL, 10U);   // wait for message
-				symbolToLocalBuffer(1,letra);
-				LCD_update();
-				break;
-			case 2:
-				osMessageQueueGet(queue_lcd, &letra, NULL, 10U);   // wait for message
-				symbolToLocalBuffer(2,letra);
-				LCD_update();
-				break;
-			case 3:
-				LCD_clear();
+		status = osMessageQueueGet(queue_lcd, &mensaje, NULL, osWaitForever);   // wait for message
+		LCD_clear();
+		for(int i = 0; i < 25; i++){
+			if(mensaje.cadena[i] != NULL){
+				symbolToLocalBuffer(mensaje.linea,mensaje.cadena[i]);
+			}
 		}
-		linea = 0;
+		if(mensaje.subrayar){
+			subrayado(mensaje.numero);
+		}
+		LCD_update();
+	}		
+}
+
+void lcd_Func_test(void *argument);
+
+int init_LCD_test(void) {
+	osThreadId_t lcd_test;
+	lcd_test = osThreadNew(lcd_Func_test, NULL, NULL); //Crear el Thread del timer
+	if (lcd_test == NULL) {
+    return(-1);
+  }
+  return(0);
+}
+
+void lcd_Func_test(void *argument) {
+	msgQueue_LCD mensaje;
+	int contador = 0;
+	sprintf(mensaje.cadena," H: 00:00:00 ---Tr:22.5");
+	mensaje.linea = 2;
+	mensaje.subrayar = false;
+	mensaje.numero = contador;
+  while (1) {
+		osMessageQueuePut(queue_lcd, &mensaje, 0U, 0U);
+		mensaje.subrayar = true;
+		mensaje.numero = contador;
+		if(contador < 9){
+			contador++;
+		}else{
+			contador = 0;
+		}
+		osDelay(1000);
 	}		
 }
