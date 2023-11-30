@@ -4,6 +4,7 @@
 #include "stdio.h"
 #include "Driver_SPI.h"
 #include "Arial12x12.h"
+#include "lcd.h"
 
 osThreadId_t lcd;                        // thread id
 void lcd_Func(void *argument);                   // thread function
@@ -15,13 +16,6 @@ ARM_DRIVER_SPI* SPIdrv = &Driver_SPI1;
 unsigned char buffer[512];
 int posicionL1 = 0, posicionL2 = 256, posicionLCD = 0;;
 int flagL2 = 0, flagF2 = 0, full = 0;
-
-typedef struct {                               
-  uint8_t linea;
-	char cadena[25];
-	bool subrayar;
-	uint8_t numero;
-} msgQueue_LCD;
 
 void init_SPI(void){
 	/* Initialize the SPI driver */
@@ -422,7 +416,7 @@ void lcd_Func(void *argument) {
 	osStatus_t status;
 	msgQueue_LCD mensaje;
   while (1) {
-		status = osMessageQueueGet(queue_lcd, &mensaje, NULL, osWaitForever);   // wait for message
+		status = osMessageQueueGet(queue_joystick, &mensaje, NULL, osWaitForever);   // wait for message
 		LCD_clear();
 		for(int i = 0; i < 25; i++){
 			if(mensaje.cadena[i] != NULL){
@@ -452,11 +446,11 @@ void lcd_Func_test(void *argument) {
 	int contador = 0;
 	sprintf(mensaje.cadena," H: 00:00:00 ---Tr:22.5");
 	mensaje.linea = 2;
-	mensaje.subrayar = false;
+	mensaje.subrayar = 0;
 	mensaje.numero = contador;
   while (1) {
 		osMessageQueuePut(queue_lcd, &mensaje, 0U, 0U);
-		mensaje.subrayar = true;
+		mensaje.subrayar = 1;
 		mensaje.numero = contador;
 		if(contador < 9){
 			contador++;
