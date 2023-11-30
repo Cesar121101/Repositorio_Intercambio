@@ -41,9 +41,11 @@
 #include "main.h"
 #include "principal.h"
 #include "clock.h"
-#include "joystick.h"
+#include "rgb.h"
 #include "lcd.h"
-#include "adc.h"
+#include "com-pc.h"
+#include "pot1pot2.h"
+#include "joystick.h"
 
 #ifdef _RTE_
 #include "RTE_Components.h"             // Component selection
@@ -153,9 +155,6 @@ int main(void){
   SystemCoreClockUpdate();
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Habilitar las interrupciones del los puertos 10-15
 	Init_GPIO();
-	
-  /* Add your application code here
-     */
 
 #ifdef RTE_CMSIS_RTOS2
   /* Initialize CMSIS-RTOS2 */
@@ -167,7 +166,6 @@ int main(void){
 	init_Clock();
 	init_Joystick();
 	init_LCD();
-	init_ADC();
   /* Start thread execution */
   osKernelStart();
 #endif
