@@ -46,6 +46,7 @@
 #include "com-pc.h"
 #include "pot1pot2.h"
 #include "joystick.h"
+#include "temperatura.h"
 
 #ifdef _RTE_
 #include "RTE_Components.h"             // Component selection
@@ -166,6 +167,9 @@ int main(void){
 	init_Clock();
 	init_Joystick();
 	init_LCD();
+	init_Temperatura();
+	init_RGB();
+	init_ADC();
   /* Start thread execution */
   osKernelStart();
 #endif
