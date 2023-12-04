@@ -7,7 +7,7 @@
  *---------------------------------------------------------------------------*/
  
 osThreadId_t pwm;                        // thread id
-extern osMessageQueueId_t queue_pwm;
+osMessageQueueId_t queue_pwm;
 
 TIM_HandleTypeDef htim1;
 TIM_OC_InitTypeDef TIM_Channel_InitStruct;
@@ -23,14 +23,6 @@ static void init_GPIO(void){
 	GPIO_InitStruct.Alternate = GPIO_AF1_TIM1; //Definir el modo alternativo del pin
 	GPIO_InitStruct.Pin = GPIO_PIN_9; //Definir al pin 9
 	HAL_GPIO_Init(GPIOE, &GPIO_InitStruct); //Inicializar el pin 9
-	
-		//led de prueba
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-	
 }
 
 static void init_Timer1(void){
@@ -59,7 +51,7 @@ int init_PWM (void) {
   if (pwm == NULL) {
     return(-1);
   }
- 
+ //queue_pwm = osMessageQueueNew(8, sizeof(Msgqueue_PWM), NULL);
   return(0);
 }
 
@@ -67,24 +59,27 @@ void ThPWM (void *argument) {
 	init_GPIO();
 	osStatus_t status;
 	float msg;
-	float Tr = 33.0f;
+	float Tr = 28.0f;
+	float temperaturaAnterior = 0.0;
   while (1) {
-		status = osMessageQueueGet(queue_pwm, &msg, NULL, 10U);
+		//status = osMessageQueueGet(, &msg, NULL, 10U);
 		y = Tr - msg;
-		
-		if (y > 5.0) {
-			// Rojo
-			dutyCycle = 200; //100%
-		} 
-		else if (y >= 0.0 && y <= 5.0) {
-			dutyCycle = 160; //80%
-		} 
-		else if (y >= -5.0 && y < 0.0) {
-			dutyCycle = 80; // 40%
-		} 
-		else if (y < -5.0) {
-			dutyCycle = 0; 
-		} 
-		init_Timer1();
+		if(y != temperaturaAnterior){
+			if (y > 5.0) {
+				// Rojo
+				dutyCycle = 200; //100%
+			} 
+			else if (y >= 0.0 && y <= 5.0) {
+				dutyCycle = 160; //80%
+			} 
+			else if (y >= -5.0 && y < 0.0) {
+				dutyCycle = 80; // 40%
+			} 
+			else if (y < -5.0) {
+				dutyCycle = 0; 
+			}
+			init_Timer1();
+		}
+		temperaturaAnterior = y;
 	}
 }
