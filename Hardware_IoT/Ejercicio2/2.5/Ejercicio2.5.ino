@@ -43,7 +43,7 @@ void actualizarMedicionLuz() {
     digitalWrite(led_r, LOW);   // Apagar el LED
     estado_alarma = "OFF";
   }else { 
-    digitalWrite(led_r, HIGH);   // Apagar el LED
+    digitalWrite(led_r, HIGH);   // Encender el LED
     estado_alarma = "ON";
   }
   Serial.println(medicion_luz);
@@ -57,7 +57,6 @@ AsyncEventSource events("/events");
 
 // Timer variables
 unsigned long lastTime = 0;  
-unsigned long timerDelay = 1000;
 
 // Initialize WiFi
 void initWiFi() {
@@ -143,7 +142,6 @@ void cargarWeb(){
     char contenidoChar[contenidoArchivo.length() + 1]; // Crea un buffer para almacenar el contenido como un array de caracteres
     contenidoArchivo.toCharArray(contenidoChar, contenidoArchivo.length() + 1); // Convierte el String a un array de caracteres
     strcat(index_html, contenidoChar);
-    //index_html += file.readString();
   }
   file.close();
 }
@@ -161,7 +159,6 @@ void setup() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
   });
-
   server.on("/Num", HTTP_POST, [](AsyncWebServerRequest *request){
     String numero_cadena;
     if(request->hasParam("numero", true)){
@@ -184,25 +181,24 @@ void setup() {
 }
 
 void loop() {
-  if ((millis() - lastTime) > timerDelay) {
+  if ((millis() - lastTime) > 500) {
     tiempo_flash = millis();
     events.send("ping",NULL,millis());
     events.send(String(medicion_luz).c_str(),"luz_actual",millis()); //valores del sensor de luz
-    events.send(String(estado_alarma).c_str(),"estado_alarma",millis()); // ON o OFF
-    
-    timeClient.update();
-    // Obtiene fecha y hora
-    String hora = timeClient.getFormattedTime();
-    time_t epochTime = timeClient.getEpochTime();
-    struct tm *ptm = gmtime ((time_t *)&epochTime); 
-    int dia = ptm->tm_mday;
-    int mes = ptm->tm_mon+1;
-    int year = ptm->tm_year+1900;
-    String fecha = (String(dia)+"/"+String(mes)+"/"+String(year));
-    
+    events.send(String(estado_alarma).c_str(),"estado_alarma",millis()); // ON o OFF   
+    delay(500);
     actualizarMedicionLuz();
 
     if(tiempo_flash - tiempo_flashA >= 60000){
+      timeClient.update();
+      // Obtiene fecha y hora
+      String hora = timeClient.getFormattedTime();
+      time_t epochTime = timeClient.getEpochTime();
+      struct tm *ptm = gmtime ((time_t *)&epochTime); 
+      int dia = ptm->tm_mday;
+      int mes = ptm->tm_mon+1;
+      int year = ptm->tm_year+1900;
+      String fecha = (String(dia)+"/"+String(mes)+"/"+String(year));
       Serial.println("Guardar Mediciones");
       media = suma_mediciones/contador_mediciones;
       Serial.print("Media: ");
