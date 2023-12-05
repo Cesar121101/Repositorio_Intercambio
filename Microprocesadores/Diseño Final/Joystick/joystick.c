@@ -14,14 +14,20 @@ osMessageQueueId_t queue_joystick;
 int init_Joystick (void); 
 void THJoystick (void *argument);                   // thread function
 
+/*---------------------------------------------------------------------------
+ *		Para visualizar el funcionamiento del thread, usar el watch 
+ *		window con las variables GESTO y PULSACION, GESTO contiene:
+ *		si es arriba = 1/abajo = 2/izquierda = 3/derecha = 4/centro = 5
+ *		PULSACION contiene: si fue larga o corta, 0 si fue corta, 1 si fue larga
+ *--------------------------------------------------------------------------*/
+
 static osStatus_t status;
-uint8_t aux;
-uint8_t aux2;
-static uint8_t msg;
+uint8_t gesto;
+uint8_t pulsacion;
 static uint8_t flags;
 uint32_t tiempo_init_boton = 0;
 uint32_t tiempo_transcurrido = 0;
-uint8_t activo = 0;
+int publicado = 0;
 
 //Objeto donde publicaremos la pulsación y si fue corta o larga
 MSGQUEUE_JOYSTICK localObject;
@@ -31,6 +37,8 @@ void Timer1_Callback(void *arg);
 
 //Timer para medir la duración de la pulsación por botón
 void Timer2_Callback(void *arg);
+
+
 
 int init_Joystick (void) {
 	queue_joystick = osMessageQueueNew(16, sizeof(MSGQUEUE_JOYSTICK), NULL);
@@ -44,7 +52,6 @@ int init_Joystick (void) {
 void THJoystick (void *argument) {
 	osTimerId_t timsoft1 = osTimerNew(Timer1_Callback, osTimerOnce, NULL, NULL);
 	osTimerStart(timsoft1, 50);
-	uint8_t msg;
 	
   while (1) {	
 		flags = osThreadFlagsWait(0x01, osFlagsWaitAny, osWaitForever);
@@ -58,85 +65,76 @@ void THJoystick (void *argument) {
 
 void Timer1_Callback(void *arg){	
 	//----------Pasados los 50 ms leemos el valor del pin para eliminar los rebotes--------
-	uint8_t t_final = 100; //(100 ticks del sistema)
-	tiempo_transcurrido = 0;
+	uint8_t t_final = 100; //(100 ticks del sistema) o 1 segundo
 	tiempo_init_boton = HAL_GetTick();
+	//osTimerId_t timsoft2 = osTimerNew(Timer2_Callback, osTimerOnce, NULL, NULL);
 	
 	//Pulsaciones cortas
 	//Arriba 1
 	if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_10) == GPIO_PIN_SET){
 		localObject.joystick_value = 1;
+		localObject.pulsacion = 0;
 		do{			
 			tiempo_transcurrido = HAL_GetTick() - tiempo_init_boton;
 			if(tiempo_transcurrido >= t_final){
 				localObject.pulsacion = 1;
-			}
-			else{
-				localObject.pulsacion = 0;
 			}
 		}while(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_10) == GPIO_PIN_SET);
 	}
 	
 	//Derecha 2
-	if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) == GPIO_PIN_SET){
+	else if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) == GPIO_PIN_SET){
 		localObject.joystick_value = 2;
+		localObject.pulsacion = 0;
 		do{			
 			tiempo_transcurrido = HAL_GetTick() - tiempo_init_boton;
 			if(tiempo_transcurrido >= t_final){
 				localObject.pulsacion = 1;
-			}
-			else{
-				localObject.pulsacion = 0;
 			}
 		}while(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) == GPIO_PIN_SET);
 	}
 	
 	//Abajo 3
-	if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_12) == GPIO_PIN_SET){
+	else if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_12) == GPIO_PIN_SET){
 		localObject.joystick_value = 3;
+		localObject.pulsacion = 0;
 		do{			
 			tiempo_transcurrido = HAL_GetTick() - tiempo_init_boton;
 			if(tiempo_transcurrido >= t_final){
 				localObject.pulsacion = 1;
-			}
-			else{
-				localObject.pulsacion = 0;
 			}
 		}while(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_12) == GPIO_PIN_SET);
 	}
 	
 	//Izquierda 4	
-	if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_14) == GPIO_PIN_SET){
+	else if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_14) == GPIO_PIN_SET){
 		localObject.joystick_value = 4;
+		localObject.pulsacion = 0;
 		do{			
 			tiempo_transcurrido = HAL_GetTick() - tiempo_init_boton;
 			if(tiempo_transcurrido >= t_final){
 				localObject.pulsacion = 1;
-			}
-			else{
-				localObject.pulsacion = 0;
 			}
 		}while(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_14) == GPIO_PIN_SET);
 	}
 		
 	//Centro 5
-	if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_15) == GPIO_PIN_SET){
+	else if(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_15) == GPIO_PIN_SET){
 		localObject.joystick_value = 5;
+		localObject.pulsacion = 0;
 		do{			
 			tiempo_transcurrido = HAL_GetTick() - tiempo_init_boton;
 			if(tiempo_transcurrido >= t_final){
 				localObject.pulsacion = 1;
 			}
-			else{
-				localObject.pulsacion = 0;
-			}
 		}while(HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_15) == GPIO_PIN_SET);
 	}
-	
-	//Publicamos el valor
-	aux = localObject.joystick_value;
-	aux2 = localObject.pulsacion;
-	
+	else{
+		localObject.joystick_value = 0;
+		localObject.pulsacion = 0;
+	}
+	osDelay(50);
+	gesto = localObject.joystick_value;
+  pulsacion = localObject.pulsacion;
 	status = osMessageQueuePut(queue_joystick, &localObject, 0U, osWaitForever);
-	
-}		
+}	
