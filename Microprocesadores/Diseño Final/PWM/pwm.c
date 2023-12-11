@@ -12,8 +12,8 @@ osMessageQueueId_t queue_pwm;
 TIM_HandleTypeDef htim1;
 TIM_OC_InitTypeDef TIM_Channel_InitStruct;
 
-float y;
 uint16_t dutyCycle;
+
 void ThPWM (void *argument);                   // thread function
 
 static void init_GPIO(void){
@@ -51,35 +51,39 @@ int init_PWM (void) {
   if (pwm == NULL) {
     return(-1);
   }
- //queue_pwm = osMessageQueueNew(8, sizeof(Msgqueue_PWM), NULL);
+	queue_pwm = osMessageQueueNew(8, sizeof(msgQueue_PWM), NULL);
+	init_GPIO();
   return(0);
 }
 
 void ThPWM (void *argument) {
-	init_GPIO();
-	osStatus_t status;
-	float msg;
-	float Tr = 28.0f;
-	float temperaturaAnterior = 0.0;
+	msgQueue_PWM msg;
+	float temperaturaAnterior = 0;
+	float y;
   while (1) {
-		//status = osMessageQueueGet(, &msg, NULL, 10U);
-		y = Tr - msg;
-		if(y != temperaturaAnterior){
-			if (y > 5.0) {
-				// Rojo
-				dutyCycle = 200; //100%
-			} 
-			else if (y >= 0.0 && y <= 5.0) {
-				dutyCycle = 160; //80%
-			} 
-			else if (y >= -5.0 && y < 0.0) {
-				dutyCycle = 80; // 40%
-			} 
-			else if (y < -5.0) {
-				dutyCycle = 0; 
+		osMessageQueueGet(queue_pwm, &msg, NULL, osWaitForever);
+		if(msg.Tm > 0){	
+			y = msg.Tr - msg.Tm;
+			if(y != temperaturaAnterior){
+				if (y > 5.0) {
+					// Rojo
+					dutyCycle = 200; //100%
+				} 
+				else if (y >= 0.0 && y <= 5.0) {
+					dutyCycle = 160; //80%
+				} 
+				else if (y >= -5.0 && y < 0.0) {
+					dutyCycle = 80; // 40%
+				} 
+				else if (y < -5.0) {
+					dutyCycle = 0; 
+				}
+				init_Timer1();
 			}
+			temperaturaAnterior = y;
+		}else{
+			dutyCycle = 0;
 			init_Timer1();
 		}
-		temperaturaAnterior = y;
 	}
 }

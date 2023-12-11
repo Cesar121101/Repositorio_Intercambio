@@ -6,7 +6,7 @@
 typedef struct {
 	float Tm;
 	float Tr;
-}Msgqueue_PWM;
+}msgQueue_PWM;
 
 int init_PWM(void);
 #endif
