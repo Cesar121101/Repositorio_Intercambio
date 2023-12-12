@@ -42,11 +42,9 @@ close all
 T = 20e-3;
 Gs = tf(0.1405, [0.251 1]);
 BGz = c2d(Gs,T,'zoh');
-F = tf([0.08771 -0.08099],[0.01076 -0.01074],T)
+F = tf([8.3974 -7.7542],[1 -0.998156],T)
 CD = series(BGz,F);
 M = feedback(CD,1)
-figure
-rlocus(M)
 %%
 [c,t] = step(BGz);
 c_inf = c(end);
