@@ -41,9 +41,10 @@ plot(ScopeData1(:,1),ScopeData1(:,2)*1.05,'r:');
 close all
 T = 20e-3;
 Gs = tf(0.1405, [0.251 1]);
-BGz = c2d(Gs,T,'zoh');
-F = tf([8.3974 -7.7542],[1 -0.998156],T)
-CD = series(BGz,F);
+BGz = c2d(Gs,T,'zoh')
+F = tf([6.05,-5.5866],[1 -1],T)
+CD = series(BGz,F)
+rlocus(CD)
 M = feedback(CD,1)
 %%
 [c,t] = step(BGz);
